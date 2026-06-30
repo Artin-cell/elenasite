@@ -1046,7 +1046,6 @@
 
     .map-block {
       border: 1px solid var(--border-color);
-      height: 280px;
       width: 100%;
     }
 
