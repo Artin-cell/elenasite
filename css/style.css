@@ -984,8 +984,23 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 40px;
-        align-items: flex-start;
+        align-items: stretch;
       }
+    }
+
+    .map-col {
+      display: flex;
+    }
+
+    .map-block {
+      flex: 1;
+      border: 1px solid var(--border-color);
+    }
+
+    .map-block iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
 
     .plat-card {
@@ -1513,4 +1528,3 @@
       height: 8px;
       background: #243447;
     }
-  
