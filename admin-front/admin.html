@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель - Елена Костарева</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #385C8E;
+            --text-main: #243447;
+            --bg-outer: #FAF8F4;
+            --bg-card: #FAF8F4;
+            --accent: #C9A27C;
+            --text-muted: #546477;
+            --border-color: #282726;
+            --font-serif: 'Playfair Display', serif;
+            --font-body: 'Jost', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-outer);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            min-height: 100vh;
+        }
+
+        /* ШАПКА АДМИН-ПАНЕЛИ */
+        .admin-header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .admin-header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-logo {
+            font-family: var(--font-serif);
+            font-size: 22px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            color: var(--primary);
+        }
+
+        .admin-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .admin-user-name {
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        .admin-logout {
+            padding: 8px 20px;
+            border: 1px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            font-family: var(--font-body);
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .admin-logout:hover {
+            background: var(--primary);
+            color: var(--bg-card);
+        }
+
+        /* КОНТЕЙНЕР */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* ВКЛАДКИ */
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0;
+            flex-wrap: wrap;
+        }
+
+        .admin-tab {
+            padding: 14px 24px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            margin-bottom: -1px;
+        }
+
+        .admin-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .admin-tab.active {
+            background: var(--primary);
+            color: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        /* КОНТЕНТ ВКЛАДОК */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ЗАГОЛОВКИ СЕКЦИЙ */
+        .section-header {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-family: var(--font-serif);
+            font-size: 32px;
+            font-weight: 400;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* КАРТОЧКИ */
+        .card {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            background: var(--bg-card);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-family: var(--font-serif);
+            font-size: 20px;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .card-description {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* КНОПКИ */
+        .btn {
+            padding: 12px 24px;
+            border: 1px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: var(--bg-card);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            border-color: #c44;
+            color: #c44;
+        }
+
+        .btn-danger:hover {
+            background: #c44;
+            color: var(--bg-card);
+        }
+
+        /* ФОРМЫ */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: block;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-main);
+            font-size: 14px;
+            font-family: var(--font-body);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: 1px solid var(--primary);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ТАБЛИЦЫ */
+        .table-container {
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(56, 92, 142, 0.05);
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 15px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: rgba(56, 92, 142, 0.02);
+        }
+
+        /* СТАТУСЫ */
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: 1px solid;
+        }
+
+        .status-pending {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .status-confirmed {
+            color: #4a7;
+            border-color: #4a7;
+        }
+
+        .status-cancelled {
+            color: #c44;
+            border-color: #c44;
+        }
+
+        /* КАЛЕНДАРЬ */
+        .calendar-container {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            transition: border-color 0.2s;
+        }
+
+        .calendar-nav-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .calendar-month {
+            font-family: var(--font-serif);
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .calendar-day-name {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .calendar-day {
+            text-align: center;
+            padding: 12px 0;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .calendar-day:hover:not(.disabled):not(.empty) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .calendar-day.disabled {
+            opacity: 0.2;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .calendar-day.available {
+            background: rgba(56, 92, 142, 0.1);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .calendar-day.selected {
+            background: var(--primary);
+            color: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        .calendar-day.empty {
+            cursor: default;
+        }
+
+        /* ВРЕМЕННЫЕ СЛОТЫ */
+        .time-slots-container {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+        }
+
+        .time-slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .time-slot {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-slot:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .time-slot.active {
+            background: var(--primary);
+            color: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        .time-slot.busy {
+            opacity: 0.3;
+            text-decoration: line-through;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* ПУСТЫЕ СОСТОЯНИЯ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        /* АДАПТИВНОСТЬ */
+        @media (max-width: 768px) {
+            .admin-header {
+                padding: 15px 20px;
+            }
+
+            .admin-container {
+                padding: 20px;
+            }
+
+            .admin-tabs {
+                flex-direction: column;
+            }
+
+            .admin-tab {
+                width: 100%;
+            }
+
+            .section-title {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .calendar-grid {
+                gap: 4px;
+            }
+
+            .calendar-day {
+                padding: 8px 0;
+                font-size: 12px;
+            }
+
+            .time-slots-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ШАПКА -->
+    <header class="admin-header">
+        <div class="admin-header-inner">
+            <div class="admin-logo">Админ-панель</div>
+            <div class="admin-user">
+                <span class="admin-user-name">Елена Костарева</span>
+                <a href="#" class="admin-logout">Выйти</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- КОНТЕЙНЕР -->
+    <div class="admin-container">
+        <!-- ВКЛАДКИ -->
+        <div class="admin-tabs">
+            <button class="admin-tab active" onclick="switchTab(event, 'services')">Услуги</button>
+            <button class="admin-tab" onclick="switchTab(event, 'reviews')">Отзывы</button>
+            <button class="admin-tab" onclick="switchTab(event, 'news')">Новости</button>
+            <button class="admin-tab" onclick="switchTab(event, 'bookings')">Записи клиентов</button>
+            <button class="admin-tab" onclick="switchTab(event, 'schedule')">Расписание</button>
+        </div>
+
+        <!-- ВКЛАДКА: УСЛУГИ -->
+        <div id="services" class="tab-content active">
+            <div class="section-header">
+                <h1 class="section-title">Управление услугами</h1>
+                <p class="section-subtitle">Добавляйте, редактируйте и удаляйте услуги, которые вы предоставляете</p>
+            </div>
+
+            <button class="btn" style="margin-bottom: 30px;">+ Добавить новую услугу</button>
+
+            <!-- Пример услуги 1 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Индивидуальная консультация</h3>
+                        <p class="card-meta">60 минут • 3 000 ₽</p>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Личная встреча с психологом для работы с вашими запросами. Подходит для решения конкретных жизненных ситуаций, работы с эмоциями и личностного роста.
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+
+            <!-- Пример услуги 2 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Коучинг-сессия</h3>
+                        <p class="card-meta">90 минут • 5 000 ₽</p>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Структурированная работа над достижением конкретных целей. Определение приоритетов, создание плана действий и поддержка на пути к результату.
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+
+            <!-- Пример услуги 3 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Подготовка к ЕГЭ</h3>
+                        <p class="card-meta">120 минут • 4 000 ₽</p>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Комплексная подготовка к сдаче единого государственного экзамена. Работа с учебным материалом, тренировка навыков сдачи экзамена и снижение тревожности.
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: ОТЗЫВЫ -->
+        <div id="reviews" class="tab-content">
+            <div class="section-header">
+                <h1 class="section-title">Управление отзывами</h1>
+                <p class="section-subtitle">Просматривайте и модерируйте отзывы клиентов</p>
+            </div>
+
+            <button class="btn" style="margin-bottom: 30px;">+ Добавить отзыв вручную</button>
+
+            <!-- Пример отзыва 1 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Анна М.</h3>
+                        <p class="card-meta">15 июня 2024 • ★★★★★</p>
+                    </div>
+                    <span class="status status-confirmed">Опубликован</span>
+                </div>
+                <p class="card-description">
+                    "Очень благодарна Елене за профессиональную помощь. После нескольких сессий я смогла разобраться в своих проблемах и найти пути их решения. Рекомендую всем, кто ищет квалифицированного психолога!"
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small">Скрыть</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+
+            <!-- Пример отзыва 2 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Дмитрий К.</h3>
+                        <p class="card-meta">10 июня 2024 • ★★★★★</p>
+                    </div>
+                    <span class="status status-pending">На модерации</span>
+                </div>
+                <p class="card-description">
+                    "Обратился к Елене с проблемой прокрастинации. За месяц работы удалось значительно продвинуться в решении рабочих задач. Очень доволен результатом!"
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Одобрить</button>
+                    <button class="btn btn-small">Отклонить</button>
+                </div>
+            </div>
+
+            <!-- Пример отзыва 3 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Мария С.</h3>
+                        <p class="card-meta">5 июня 2024 • ★★★★☆</p>
+                    </div>
+                    <span class="status status-confirmed">Опубликован</span>
+                </div>
+                <p class="card-description">
+                    "Проходила курс подготовки к ЕГЭ по обществознанию. Елена отлично объясняет материал, помогает структурировать знания. Сдала экзамен на 85 баллов!"
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small">Скрыть</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: НОВОСТИ -->
+        <div id="news" class="tab-content">
+            <div class="section-header">
+                <h1 class="section-title">Добавление новостей</h1>
+                <p class="section-subtitle">Публикуйте новости и полезные статьи для ваших клиентов</p>
+            </div>
+
+            <div class="card">
+                <h3 style="font-family: var(--font-serif); font-size: 20px; color: var(--primary); margin-bottom: 20px;">Создать новую публикацию</h3>
+                
+                <form>
+                    <div class="form-group">
+                        <label class="form-label">Заголовок новости</label>
+                        <input type="text" class="form-input" placeholder="Введите заголовок">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Дата публикации</label>
+                        <input type="date" class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Краткое описание</label>
+                        <textarea class="form-textarea" placeholder="Краткое описание для отображения в списке новостей" style="min-height: 80px;"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Полный текст новости</label>
+                        <textarea class="form-textarea" placeholder="Полный текст публикации"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Изображение (опционально)</label>
+                        <input type="file" class="form-input" accept="image/*">
+                    </div>
+
+                    <button type="submit" class="btn">Опубликовать новость</button>
+                </form>
+            </div>
+
+            <h3 style="font-family: var(--font-serif); font-size: 24px; color: var(--primary); margin: 40px 0 20px;">Опубликованные новости</h3>
+
+            <!-- Пример новости 1 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Как справиться с тревогой перед экзаменами</h3>
+                        <p class="card-meta">20 июня 2024</p>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Экзамены — это всегда стресс. В этой статье я делюсь проверенными техниками, которые помогут вам снизить уровень тревоги и показать лучшие результаты на ЕГЭ.
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small">Просмотреть</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+
+            <!-- Пример новости 2 -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Новая программа "Путь к себе"</h3>
+                        <p class="card-meta">15 июня 2024</p>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Рада сообщить о запуске новой комплексной программы личностного роста. Программа рассчитана на 3 месяца и включает индивидуальные сессии, групповые встречи и домашние задания.
+                </p>
+                <div class="card-actions">
+                    <button class="btn btn-small">Редактировать</button>
+                    <button class="btn btn-small">Просмотреть</button>
+                    <button class="btn btn-small btn-danger">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: ЗАПИСИ КЛИЕНТОВ -->
+        <div id="bookings" class="tab-content">
+            <div class="section-header">
+                <h1 class="section-title">Управление записями клиентов</h1>
+                <p class="section-subtitle">Просматривайте и управляйте всеми заявками на консультацию</p>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Клиент</th>
+                            <th>Услуга</th>
+                            <th>Дата и время</th>
+                            <th>Формат</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <strong>Анна Петрова</strong><br>
+                                <span style="font-size: 12px; color: var(--text-muted);">+7 (999) 123-45-67</span>
+                            </td>
+                            <td>Индивидуальная консультация</td>
+                            <td>25 июня 2024<br>14:00</td>
+                            <td>Онлайн</td>
+                            <td><span class="status status-confirmed">Подтверждено</span></td>
+                            <td>
+                                <button class="btn btn-small">Подробнее</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Иван Сидоров</strong><br>
+                                <span style="font-size: 12px; color: var(--text-muted);">+7 (999) 234-56-78</span>
+                            </td>
+                            <td>Коучинг-сессия</td>
+                            <td>26 июня 2024<br>16:30</td>
+                            <td>Офис</td>
+                            <td><span class="status status-pending">Ожидает подтверждения</span></td>
+                            <td>
+                                <button class="btn btn-small">Подтвердить</button>
+                                <button class="btn btn-small btn-danger">Отклонить</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Елена Козлова</strong><br>
+                                <span style="font-size: 12px; color: var(--text-muted);">+7 (999) 345-67-89</span>
+                            </td>
+                            <td>Подготовка к ЕГЭ</td>
+                            <td>27 июня 2024<br>10:00</td>
+                            <td>Офис</td>
+                            <td><span class="status status-confirmed">Подтверждено</span></td>
+                            <td>
+                                <button class="btn btn-small">Подробнее</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Дмитрий Волков</strong><br>
+                                <span style="font-size: 12px; color: var(--text-muted);">+7 (999) 456-78-90</span>
+                            </td>
+                            <td>Индивидуальная консультация</td>
+                            <td>28 июня 2024<br>18:00</td>
+                            <td>Онлайн</td>
+                            <td><span class="status status-cancelled">Отменено</span></td>
+                            <td>
+                                <button class="btn btn-small">Подробнее</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <strong>Ольга Новикова</strong><br>
+                                <span style="font-size: 12px; color: var(--text-muted);">+7 (999) 567-89-01</span>
+                            </td>
+                            <td>Коучинг-сессия</td>
+                            <td>29 июня 2024<br>12:00</td>
+                            <td>Онлайн</td>
+                            <td><span class="status status-pending">Ожидает подтверждения</span></td>
+                            <td>
+                                <button class="btn btn-small">Подтвердить</button>
+                                <button class="btn btn-small btn-danger">Отклонить</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: РАСПИСАНИЕ -->
+        <div id="schedule" class="tab-content">
+            <div class="section-header">
+                <h1 class="section-title">Выставление свободных дат и времени</h1>
+                <p class="section-subtitle">Управляйте своим расписанием и доступными временными слотами</p>
+            </div>
+
+            <!-- Календарь -->
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn">← Предыдущий</button>
+                    <h2 class="calendar-month">Июнь 2024</h2>
+                    <button class="calendar-nav-btn">Следующий →</button>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="calendar-day-name">Пн</div>
+                    <div class="calendar-day-name">Вт</div>
+                    <div class="calendar-day-name">Ср</div>
+                    <div class="calendar-day-name">Чт</div>
+                    <div class="calendar-day-name">Пт</div>
+                    <div class="calendar-day-name">Сб</div>
+                    <div class="calendar-day-name">Вс</div>
+
+                    <!-- Пустые ячейки для начала месяца -->
+                    <div class="calendar-day empty"></div>
+                    <div class="calendar-day empty"></div>
+                    <div class="calendar-day empty"></div>
+                    <div class="calendar-day empty"></div>
+                    <div class="calendar-day empty"></div>
+                    <div class="calendar-day">1</div>
+                    <div class="calendar-day">2</div>
+
+                    <div class="calendar-day available">3</div>
+                    <div class="calendar-day">4</div>
+                    <div class="calendar-day available">5</div>
+                    <div class="calendar-day">6</div>
+                    <div class="calendar-day available">7</div>
+                    <div class="calendar-day">8</div>
+                    <div class="calendar-day">9</div>
+
+                    <div class="calendar-day available">10</div>
+                    <div class="calendar-day">11</div>
+                    <div class="calendar-day available selected">12</div>
+                    <div class="calendar-day">13</div>
+                    <div class="calendar-day available">14</div>
+                    <div class="calendar-day">15</div>
+                    <div class="calendar-day">16</div>
+
+                    <div class="calendar-day available">17</div>
+                    <div class="calendar-day">18</div>
+                    <div class="calendar-day available">19</div>
+                    <div class="calendar-day">20</div>
+                    <div class="calendar-day available">21</div>
+                    <div class="calendar-day">22</div>
+                    <div class="calendar-day">23</div>
+
+                    <div class="calendar-day available">24</div>
+                    <div class="calendar-day available">25</div>
+                    <div class="calendar-day available">26</div>
+                    <div class="calendar-day">27</div>
+                    <div class="calendar-day available">28</div>
+                    <div class="calendar-day">29</div>
+                    <div class="calendar-day">30</div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                    <p style="font-size: 13px; color: var(--text-muted);">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: rgba(56, 92, 142, 0.1); margin-right: 5px; vertical-align: middle;"></span>
+                        Доступные дни
+                        <span style="display: inline-block; width: 12px; height: 12px; background: var(--primary); margin-left: 20px; margin-right: 5px; vertical-align: middle;"></span>
+                        Выбранный день
+                    </p>
+                </div>
+            </div>
+
+            <!-- Временные слоты для выбранного дня -->
+            <div class="time-slots-container">
+                <h3 style="font-family: var(--font-serif); font-size: 20px; color: var(--primary); margin-bottom: 10px;">
+                    Доступное время на 12 июня 2024
+                </h3>
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+                    Нажмите на временной слот, чтобы сделать его доступным или недоступным для записи
+                </p>
+
+                <div class="time-slots-grid">
+                    <div class="time-slot active">09:00</div>
+                    <div class="time-slot">09:30</div>
+                    <div class="time-slot active">10:00</div>
+                    <div class="time-slot busy">10:30</div>
+                    <div class="time-slot active">11:00</div>
+                    <div class="time-slot">11:30</div>
+                    <div class="time-slot">12:00</div>
+                    <div class="time-slot">12:30</div>
+                    <div class="time-slot active">13:00</div>
+                    <div class="time-slot">13:30</div>
+                    <div class="time-slot active">14:00</div>
+                    <div class="time-slot busy">14:30</div>
+                    <div class="time-slot">15:00</div>
+                    <div class="time-slot">15:30</div>
+                    <div class="time-slot active">16:00</div>
+                    <div class="time-slot">16:30</div>
+                    <div class="time-slot active">17:00</div>
+                    <div class="time-slot">17:30</div>
+                    <div class="time-slot active">18:00</div>
+                    <div class="time-slot">18:30</div>
+                    <div class="time-slot">19:00</div>
+                    <div class="time-slot">19:30</div>
+                    <div class="time-slot">20:00</div>
+                    <div class="time-slot">20:30</div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                    <p style="font-size: 13px; color: var(--text-muted);">
+                        <span style="display: inline-block; width: 12px; height: 12px; background: var(--primary); margin-right: 5px; vertical-align: middle;"></span>
+                        Доступно для записи
+                        <span style="display: inline-block; width: 12px; height: 12px; border: 1px solid var(--border-color); margin-left: 20px; margin-right: 5px; vertical-align: middle;"></span>
+                        Недоступно
+                        <span style="display: inline-block; width: 12px; height: 12px; opacity: 0.3; text-decoration: line-through; margin-left: 20px; margin-right: 5px; vertical-align: middle;">—</span>
+                        Уже занято
+                    </p>
+                </div>
+
+                <button class="btn" style="margin-top: 20px;">Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Переключение вкладок
+        function switchTab(event, tabId) {
+            // Убираем активный класс у всех вкладок
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Скрываем все контенты
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Добавляем активный класс к выбранной вкладке
+            event.target.classList.add('active');
+            
+            // Показываем соответствующий контент
+            document.getElementById(tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
