@@ -1,0 +1,529 @@
+
+        :root {
+            --primary: #385C8E;
+            --text-main: #243447;
+            --bg-outer: #FAF8F4;
+            --bg-card: #FAF8F4;
+            --accent: #C9A27C;
+            --text-muted: #546477;
+            --border-color: #282726;
+            --font-serif: 'Playfair Display', serif;
+            --font-body: 'Jost', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-outer);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            min-height: 100vh;
+        }
+
+        /* ШАПКА АДМИН-ПАНЕЛИ */
+        .admin-header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 20px 40px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .admin-header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-logo {
+            font-family: var(--font-serif);
+            font-size: 22px;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            color: var(--primary);
+        }
+
+        .admin-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .admin-user-name {
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        .admin-logout {
+            padding: 8px 20px;
+            border: 1px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            font-family: var(--font-body);
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .admin-logout:hover {
+            background: var(--primary);
+            color: var(--bg-card);
+        }
+
+        /* КОНТЕЙНЕР */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* ВКЛАДКИ */
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0;
+            flex-wrap: wrap;
+        }
+
+        .admin-tab {
+            padding: 14px 24px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            margin-bottom: -1px;
+        }
+
+        .admin-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .admin-tab.active {
+            background: var(--primary);
+            color: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        /* КОНТЕНТ ВКЛАДОК */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ЗАГОЛОВКИ СЕКЦИЙ */
+        .section-header {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-family: var(--font-serif);
+            font-size: 32px;
+            font-weight: 400;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .section-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* КАРТОЧКИ */
+        .card {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            background: var(--bg-card);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-family: var(--font-serif);
+            font-size: 20px;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .card-description {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* КНОПКИ */
+        .btn {
+            padding: 12px 24px;
+            border: 1px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            font-family: var(--font-body);
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: var(--bg-card);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            border-color: #c44;
+            color: #c44;
+        }
+
+        .btn-danger:hover {
+            background: #c44;
+            color: var(--bg-card);
+        }
+
+        /* ФОРМЫ */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: block;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-main);
+            font-size: 14px;
+            font-family: var(--font-body);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: 1px solid var(--primary);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ТАБЛИЦЫ */
+        .table-container {
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(56, 92, 142, 0.05);
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 15px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: rgba(56, 92, 142, 0.02);
+        }
+
+        /* СТАТУСЫ */
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: 1px solid;
+        }
+
+        .status-pending {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .status-confirmed {
+            color: #4a7;
+            border-color: #4a7;
+        }
+
+        .status-cancelled {
+            color: #c44;
+            border-color: #c44;
+        }
+
+        /* КАЛЕНДАРЬ */
+        .calendar-container {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-nav-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            transition: border-color 0.2s;
+        }
+
+        .calendar-nav-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .calendar-month {
+            font-family: var(--font-serif);
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .calendar-day-name {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .calendar-day {
+            text-align: center;
+            padding: 12px 0;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .calendar-day:hover:not(.disabled):not(.empty) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .calendar-day.disabled {
+            opacity: 0.2;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .calendar-day.available {
+            background: rgba(56, 92, 142, 0.1);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .calendar-day.selected {
+            background: var(--primary);
+            color: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        .calendar-day.empty {
+            cursor: default;
+        }
+
+        /* ВРЕМЕННЫЕ СЛОТЫ */
+        .time-slots-container {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+        }
+
+        .time-slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .time-slot {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-slot:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .time-slot.active {
+            background: var(--primary);
+            color: var(--bg-card);
+            border-color: var(--primary);
+        }
+
+        .time-slot.busy {
+            opacity: 0.3;
+            text-decoration: line-through;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* ПУСТЫЕ СОСТОЯНИЯ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        /* АДАПТИВНОСТЬ */
+        @media (max-width: 768px) {
+            .admin-header {
+                padding: 15px 20px;
+            }
+
+            .admin-container {
+                padding: 20px;
+            }
+
+            .admin-tabs {
+                flex-direction: column;
+            }
+
+            .admin-tab {
+                width: 100%;
+            }
+
+            .section-title {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .calendar-grid {
+                gap: 4px;
+            }
+
+            .calendar-day {
+                padding: 8px 0;
+                font-size: 12px;
+            }
+
+            .time-slots-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+        }
