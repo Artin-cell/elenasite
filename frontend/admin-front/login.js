@@ -1,9 +1,9 @@
-// Хешированный пароль (SHA-256 от "мойСекретныйПароль2026")
-// Генерация: https://emn178.github.io/online-tools/sha256.html
+// Хешированный пароль
+
 const VALID_CREDENTIALS = {
     login: 'admin',
     // SHA-256 от пароля (не сам пароль в открытом виде!)
-    passwordHash: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08' 
+    passwordHash: 'beb55a2c10325def8568c9797526881558b8915ab7191710a23422f6349dcbf7' 
 };
 
 // Функция SHA-256
