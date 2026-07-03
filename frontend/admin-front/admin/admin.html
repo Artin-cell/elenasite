@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель - Елена Костарева</title>
+     <script>
+        // Максимальное время сессии (8 часов)
+        const SESSION_DURATION = 8 * 60 * 60 * 1000;
+        
+        (function checkAuth() {
+            const isAdmin = sessionStorage.getItem('isAdmin');
+            const loginTime = parseInt(sessionStorage.getItem('loginTime') || '0');
+            const now = Date.now();
+            
+            // Проверка: авторизован ли и не истекла ли сессия
+            if (!isAdmin || (now - loginTime) > SESSION_DURATION) {
+                // Очистить сессию и редирект на страницу входа
+                sessionStorage.clear();
+                window.location.replace('/admin/');
+            }
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -987,25 +1004,14 @@
         </div>
     </div>
 
-    <script>
-        // Переключение вкладок
-        function switchTab(event, tabId) {
-            // Убираем активный класс у всех вкладок
-            document.querySelectorAll('.admin-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Скрываем все контенты
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // Добавляем активный класс к выбранной вкладке
-            event.target.classList.add('active');
-            
-            // Показываем соответствующий контент
-            document.getElementById(tabId).classList.add('active');
+<script>
+        // Функция выхода
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = '/admin/';
         }
     </script>
+<script src="admin.js"></script>
+    
 </body>
 </html>
