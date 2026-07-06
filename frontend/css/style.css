@@ -1527,3 +1527,44 @@
       height: 8px;
       background: #243447;
     }
+
+
+    .dev-modal-content {
+      background: #FAF8F4;
+      border: 1px solid #385C8E;
+      border-radius: 0;
+      max-width: 420px;
+      padding: 40px 32px;
+      text-align: center;
+    }
+
+    .dev-modal-title {
+      font-family: 'Playfair Display', serif;
+      color: #385C8E;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+
+    .dev-modal-text {
+      font-family: 'Jost', sans-serif;
+      color: #333;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .dev-modal-btn {
+      background: #385C8E;
+      color: #FAF8F4;
+      border: none;
+      border-radius: 0;
+      padding: 12px 32px;
+      font-family: 'Jost', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .dev-modal-btn:hover {
+      opacity: 0.85;
+    }
