@@ -436,15 +436,14 @@ function closeDoc7Modal(event) {
 }
 
 
+function openDevModal() {
+  document.getElementById('dev-modal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
 function closeDevModal(event) {
-  if (!event || event.target.id === 'dev-back' || event.target.classList.contains('s-modal-close') || event.target.classList.contains('s-modal-btn')) {
+  if (!event || event.target.id === 'back' || event.target.classList.contains('s-modal-close') || event.target.classList.contains('s-modal-btn')) {
     document.getElementById('dev-modal').classList.remove('active');
     document.body.style.overflow = 'auto';
   }
 }
-
-// Открыть модалку сразу при загрузке страницы
-window.addEventListener('DOMContentLoaded', function () {
-  document.getElementById('dev-modal').classList.add('active');
-  document.body.style.overflow = 'hidden';
-});
