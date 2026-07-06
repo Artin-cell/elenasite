@@ -438,7 +438,7 @@ function closeDoc7Modal(event) {
 
 
 
-openDevModal();
+
 
 
 function openDevModal() {
