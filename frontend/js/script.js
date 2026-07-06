@@ -436,6 +436,11 @@ function closeDoc7Modal(event) {
 }
 
 
+
+
+openDevModal();
+
+
 function openDevModal() {
   document.getElementById('dev-modal').classList.add('active');
   document.body.style.overflow = 'hidden';
