@@ -911,7 +911,18 @@
   </div>
 
 <script src="js/script.js"></script>
-
+<!-- Модальное окно "Сайт в разработке" -->
+<div id="dev-modal" class="s-modal active">
+  <div id="dev-back" class="s-modal-overlay"></div>
+  <div class="s-modal-content dev-modal-content">
+    <button class="s-modal-close" onclick="closeDevModal(event)">&times;</button>
+    <h3 class="dev-modal-title">Сайт в разработке</h3>
+    <p class="dev-modal-text">
+      Сайт находится в стадии наполнения и доработки. Некоторые разделы и материалы могут быть временно недоступны или отображаться некорректно.
+    </p>
+    <button class="s-modal-btn dev-modal-btn" onclick="closeDevModal(event)">Понятно</button>
+  </div>
+</div>
 </body>
 
 </html>
