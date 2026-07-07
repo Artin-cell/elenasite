@@ -1063,6 +1063,15 @@
       margin-top: 15px;
     }
 
+    .contacts-grid > *:nth-child(odd) {
+  justify-self: end;
+}
+
+/* Правая колонка (четные элементы) - выравнивание по левому краю */
+.contacts-grid > *:nth-child(even) {
+  justify-self: start;
+}
+
     /* ПОДВАЛ */
     footer {
       padding: 60px 0;
