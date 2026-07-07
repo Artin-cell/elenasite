@@ -1049,11 +1049,12 @@
       width: 100%;
     }
 
-    .platforms-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  justify-items: center;
+.platforms-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 300px);
+    gap: 20px 40px;
+    justify-content: center;
+    margin-top: 15px;
 }
 
     /* ПОДВАЛ */
