@@ -1120,6 +1120,14 @@
       max-width: 300px;
     }
 
+    .foot-ct-item1 {
+      border: 1px solid var(--primary);
+      padding: 14px;
+      text-align: center;
+      width: 100%;
+      max-width: 300px;
+    }
+
     .fci-v {
       font-size: 13px;
       text-transform: uppercase;
