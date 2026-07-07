@@ -1059,8 +1059,8 @@
 
 .platforms-grid1 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(2, max-content);
+  gap: 20px 40px;
   margin-top: 15px;
 }
 
