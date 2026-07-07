@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Функция для обработки реальных данных от ВКонтакте
 function parseVkNews(data) {
+  console.log('Данные от API:', data);
   if (!data || !data.response || !data.response.items) {
     console.error('Не удалось загрузить новости VK:', data);
     loadDemoNews();
