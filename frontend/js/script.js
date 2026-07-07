@@ -151,81 +151,193 @@ function closeServiceModal(event) {
 }
 
 
-
-
 document.addEventListener('DOMContentLoaded', function () {
+  console.group('🚀 Загрузка новостей из ВКонтакте');
+  
   const vkDomain = 'ekostapsy';
-  const count = 15; // Запрашиваем 15 записей для запаса, чтобы после фильтрации точно набралось 4 штуки
-
-
-
-  // Если ключ есть — делаем запрос к ВК
+  const count = 15;
+  
+  console.log('📍 Домен сообщества:', vkDomain);
+  console.log('🔢 Запрашиваем постов:', count);
+  
   const script = document.createElement('script');
-  script.src = `https://api.vk.com/method/wall.get?domain=${vkDomain}&count=${count}&v=5.131&callback=parseVkNews`;
+  const apiUrl = `https://api.vk.com/method/wall.get?domain=${vkDomain}&count=${count}&v=5.131&callback=parseVkNews`;
+  
+  console.log('🌐 URL запроса:', apiUrl);
+  console.log('⏱️ Отправляю запрос...');
+  
+  script.src = apiUrl;
+  
+  // Обработка успешной загрузки скрипта
+  script.onload = () => {
+    console.log('✅ Скрипт JSONP успешно загружен в DOM');
+  };
+  
+  // Обработка ошибки загрузки скрипта
+  script.onerror = (error) => {
+    console.error('❌ Критическая ошибка загрузки скрипта:', error);
+    console.error('💡 Возможно, проблема с интернетом или API ВКонтакте недоступен');
+    console.groupEnd();
+    loadDemoNews();
+  };
+  
   document.body.appendChild(script);
+  console.log('📎 Скрипт добавлен в document.body');
+  console.groupEnd();
 });
 
 // Функция для обработки реальных данных от ВКонтакте
 function parseVkNews(data) {
-  console.log('Данные от API:', data);
-  if (!data || !data.response || !data.response.items) {
-    console.error('Не удалось загрузить новости VK:', data);
+  console.group('📥 Обработка ответа от API ВКонтакте');
+  
+  console.log('📦 Сырые данные от API:', data);
+  
+  // Проверка на наличие ошибок API
+  if (data && data.error) {
+    console.error('❌ API ВКонтакте вернул ошибку:');
+    console.error('  Код ошибки:', data.error.error_code);
+    console.error('  Сообщение:', data.error.error_msg);
+    console.error('  Тип:', data.error.error_msg);
+    console.warn('⚠️ Загружаю демо-новости вместо реальных');
+    console.groupEnd();
     loadDemoNews();
     return;
   }
-
+  
+  // Проверка на валидность структуры ответа
+  if (!data || !data.response || !data.response.items) {
+    console.error('❌ Некорректная структура ответа от API');
+    console.error('  Есть data?', !!data);
+    console.error('  Есть response?', !!(data && data.response));
+    console.error('  Есть items?', !!(data && data.response && data.response.items));
+    console.warn('⚠️ Загружаю демо-новости');
+    console.groupEnd();
+    loadDemoNews();
+    return;
+  }
+  
+  console.log('📊 Всего получено постов:', data.response.items.length);
+  console.log('📋 Таблица постов:');
+  console.table(data.response.items.map(item => ({
+    id: item.id,
+    date: new Date(item.date * 1000).toLocaleDateString('ru-RU'),
+    text_length: item.text ? item.text.length : 0,
+    has_attachments: !!item.attachments,
+    attachments_count: item.attachments ? item.attachments.length : 0
+  })));
+  
   const container = document.querySelector('.news-grid');
-  if (!container) return;
+  if (!container) {
+    console.error('❌ Контейнер .news-grid не найден в DOM');
+    console.groupEnd();
+    return;
+  }
+  
+  console.log('🧹 Очищаю контейнер новостей');
   container.innerHTML = '';
-
-  // ФИЛЬТР: Оставляем только те записи, у которых есть И текст, И картинка
-  const validItems = data.response.items.filter(item => {
+  
+  console.group('🔍 Фильтрация постов (текст + фото)');
+  
+  const validItems = data.response.items.filter((item, index) => {
     const hasText = item.text && item.text.trim().length > 0;
-
+    
     let hasPhoto = false;
     if (item.attachments) {
       hasPhoto = item.attachments.some(att => att.type === 'photo');
     }
-
-    return hasText && hasPhoto; // Пост подходит, только если выполняются оба условия
+    
+    const isValid = hasText && hasPhoto;
+    
+    console.log(`  Пост #${item.id} (индекс ${index}): текст=${hasText}✓, фото=${hasPhoto}✓ → ${isValid ? '✅ подходит' : '❌ отсеян'}`);
+    
+    return isValid;
   });
-
-  // Если после фильтрации ничего не нашлось, показываем демо-записи, чтобы секция не была пустой
+  
+  console.log(`📈 Результат фильтрации: ${validItems.length} из ${data.response.items.length} постов подходят`);
+  console.groupEnd();
+  
   if (validItems.length === 0) {
-    console.warn('Новостная лента: Среди последних постов не найдено записей с текстом и фото одновременно.');
+    console.warn('⚠️ Не найдено ни одного поста с текстом и фото одновременно');
+    console.warn('💡 Возможно, в группе сейчас только текстовые или только фото-посты');
+    console.groupEnd();
     loadDemoNews();
     return;
   }
-
-  // Берем первые 4 подходящие записи из отфильтрованных
-  validItems.slice(0, 4).forEach(item => {
+  
+  console.log(`🎯 Беру первые ${Math.min(4, validItems.length)} постов для отображения`);
+  
+  const postsToRender = validItems.slice(0, 4);
+  
+  console.log('📋 Посты для рендеринга:');
+  console.table(postsToRender.map((item, i) => ({
+    '№': i + 1,
+    id: item.id,
+    date: new Date(item.date * 1000).toLocaleDateString('ru-RU'),
+    text_preview: item.text ? item.text.substring(0, 50) + '...' : ''
+  })));
+  
+  console.group('🎨 Рендеринг карточек');
+  
+  postsToRender.forEach((item, index) => {
+    console.log(`\n--- Карточка ${index + 1} ---`);
+    
     const dateObj = new Date(item.date * 1000);
-    const dateStr = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }).replace(' г.', '');
+    const dateStr = dateObj.toLocaleDateString('ru-RU', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    }).replace(' г.', '');
+    
+    console.log('📅 Дата:', dateStr);
+    
     const fullText = item.text || '';
     const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
+    
     let title = 'Новая публикация';
     let desc = 'Читайте подробнее в нашем сообществе ВКонтакте.';
-
+    
     if (lines.length > 0) {
       title = lines[0].length > 50 ? lines[0].substring(0, 50) + '...' : lines[0];
-      if (lines.length > 1) desc = lines.slice(1).join(' ');
+      console.log('📝 Заголовок:', title);
+      
+      if (lines.length > 1) {
+        desc = lines.slice(1).join(' ');
+        console.log(`📄 Строк в тексте: ${lines.length}`);
+      }
     }
-    if (desc.length > 120) desc = desc.substring(0, 120) + '...';
-
-    // Извлекаем URL фотографии
+    
+    if (desc.length > 120) {
+      desc = desc.substring(0, 120) + '...';
+    }
+    
+    console.log('💬 Описание:', desc.substring(0, 60) + '...');
+    
     let photoUrl = '';
     if (item.attachments) {
       const firstPhoto = item.attachments.find(att => att.type === 'photo');
       if (firstPhoto && firstPhoto.photo && firstPhoto.photo.sizes) {
         const sizes = firstPhoto.photo.sizes;
+        console.log('📸 Доступные размеры фото:', sizes.map(s => `${s.type}(${s.width}x${s.height})`).join(', '));
+        
         const optimal = sizes.find(s => s.type === 'q' || s.type === 'x') || sizes[sizes.length - 1];
-        if (optimal) photoUrl = optimal.url;
+        if (optimal) {
+          photoUrl = optimal.url;
+          console.log('🖼️ Выбран размер:', optimal.type, `(${optimal.width}x${optimal.height})`);
+        }
       }
     }
-
+    
+    if (!photoUrl) {
+      console.warn('⚠️ Фото не найдено для этого поста');
+    }
+    
     renderCard(dateStr, title, desc, photoUrl);
+    console.log('✅ Карточка успешно отрендерена');
   });
+  
+  console.groupEnd();
+  console.log('🎉 Все новости успешно loaded!');
+  console.groupEnd();
 }
 
 // Функция отрисовки одной карточки
