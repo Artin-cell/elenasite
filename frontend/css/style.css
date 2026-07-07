@@ -1057,7 +1057,7 @@
     margin-top: 15px;
 }
 
-.platforms-grid1 {
+.contacst-grid1 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px 20px;
@@ -1065,12 +1065,12 @@
 }
 
 /* Левая колонка (нечетные элементы) - выравнивание по правому краю */
-.platforms-grid1 > *:nth-child(odd) {
+.contacst-grid1 > *:nth-child(odd) {
   justify-self: end;
 }
 
 /* Правая колонка (четные элементы) - выравнивание по левому краю */
-.platforms-grid1 > *:nth-child(even) {
+.contacst-grid1 > *:nth-child(even) {
   justify-self: start;
 }
 
