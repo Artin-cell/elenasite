@@ -1049,13 +1049,21 @@
       width: 100%;
     }
 
-.platforms-grid {
-    display: grid;
-    grid-template-columns: repeat(2, max-content);
-    gap: 20px 40px;
-    justify-content: center;
-    margin-top: 15px;
-}
+    .platforms-grid {
+      display: grid;
+      grid-template-columns: repeat(2, max-content);
+      gap: 20px 40px;
+      justify-content: center;
+      margin-top: 15px;
+    }
+
+    .platforms-grid> :nth-child(odd) {
+      justify-self: end;
+    }
+
+    .platforms-grid> :nth-child(even) {
+      justify-self: start;
+    }
 
     /* ПОДВАЛ */
     footer {
@@ -1117,15 +1125,7 @@
       border: 1px solid var(--primary);
       padding: 14px;
       text-align: center;
-      width: 100%;
-      max-width: 300px;
-    }
-
-    .foot-ct-item1 {
-      border: 1px solid var(--primary);
-      padding: 14px;
-      text-align: center;
-
+      /* width: 100%; */
       max-width: 300px;
     }
 
@@ -1536,6 +1536,3 @@
       height: 8px;
       background: #243447;
     }
-
-
-    
