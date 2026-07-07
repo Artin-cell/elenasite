@@ -1049,30 +1049,12 @@
       width: 100%;
     }
 
-.platforms-grid {
-    display: grid;
-    grid-template-columns: repeat(2, max-content);
-    gap: 20px 40px;
-    justify-content: center;
-    margin-top: 15px;
-}
-
-.contacst-grid1 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px 20px;
-  margin-top: 15px;
-}
-
-/* Левая колонка (нечетные элементы) - выравнивание по правому краю */
-.contacst-grid1 > *:nth-child(odd) {
-  justify-self: end;
-}
-
-/* Правая колонка (четные элементы) - выравнивание по левому краю */
-.contacst-grid1 > *:nth-child(even) {
-  justify-self: start;
-}
+    .platforms-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 15px;
+    }
 
     /* ПОДВАЛ */
     footer {
@@ -1134,7 +1116,7 @@
       border: 1px solid var(--primary);
       padding: 14px;
       text-align: center;
-      /* width: 100%; */
+      width: 100%;
       max-width: 300px;
     }
 
