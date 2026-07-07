@@ -1050,12 +1050,11 @@
     }
 
     .platforms-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      /* margin-top: 15px; */
-      justify-items: center;
-    }
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  justify-items: center;
+}
 
     /* ПОДВАЛ */
     footer {
