@@ -156,18 +156,12 @@ function closeServiceModal(event) {
 document.addEventListener('DOMContentLoaded', function () {
   const vkDomain = 'ekostapsy';
   const count = 15; // Запрашиваем 15 записей для запаса, чтобы после фильтрации точно набралось 4 штуки
-  const accessToken = 'c1d048f0c1d048f0c1d048f0c6c291ad28cc1d0c1d048f0abeaa66c531f7cea58d5c6f8'; // Замените на ваш реальный ключ доступа
 
-  // Если ключ не изменен, включаем демонстрационные новости
-  if (accessToken === ' ' || !accessToken) {
-    console.warn('Новостная лента: Используются демонстрационные данные. Вставьте настоящий ключ API VK.');
-    loadDemoNews();
-    return;
-  }
+
 
   // Если ключ есть — делаем запрос к ВК
   const script = document.createElement('script');
-  script.src = `https://api.vk.com/method/wall.get?domain=${vkDomain}&count=${count}&v=5.131&access_token=${accessToken}&callback=parseVkNews`;
+  script.src = `https://api.vk.com/method/wall.get?domain=${vkDomain}&count=${count}&v=5.131&callback=parseVkNews`;
   document.body.appendChild(script);
 });
 
