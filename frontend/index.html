@@ -420,16 +420,13 @@
       <div class="booking-form">
 
 
-        <!-- <div class="plat-card">
+
+        <div class="plat-card">
           <div class="plat-name">Запись осуществляется любым из указанных ниже способов</div>
           <div class="about-para">Выберите удобный способ связи ниже, чтобы записаться на консультацию. Мы ответим в
             ближайшее время, поможем подобрать удобную дату и время и подтвердим вашу запись. Если у вас есть вопросы,
             мы с удовольствием на них ответим.</div>
-          <!-- <ul class="rules-list">
-            <li class="rule-row"><span class="rule-dot"></span> г. Екатеринбург, ул. Уральских рабочих 67,
-              Лингвистический центр ABC</li>
-            <li class="rule-row"><span class="rule-dot"></span> Пожалуйста не опаздывайте</li>
-          </ul> 
+
         </div>
 
         <div class="contacts-grid">
@@ -443,8 +440,9 @@
           <div class="foot-ct-item"><a href="https://vk.ru/ekostapsy" target="_blank" class="fci-v">ВКонтакте</a></div>
 
 
-          <div class="foot-ct-item"><a href="https://t.me/psychologistekosta" target="_blank" class="fci-v">Telegram</a></div>
-        </div> -->
+          <div class="foot-ct-item"><a href="https://t.me/psychologistekosta" target="_blank" class="fci-v">Telegram</a>
+          </div>
+        </div>
 
 
 
@@ -453,15 +451,15 @@
 
 
 
-        <div class="booking-grid">
 
+        <!-- <div class="booking-grid">
           <div class="fg-title">
             <div class="form-ttl">Контактные данные</div>
           </div>
 
           <div class="fg fg-name">
-            <label class="fl">Ваше имя *</label>
-            <input class="fi-inp" type="text" id="bName" placeholder="Введите имя и фамилию">
+            <label class="fl">Ваше ФИО *</label>
+            <input class="fi-inp" type="text" id="bName" placeholder="Введите ФИО">
           </div>
 
           <div class="form-row2 fg-contacts">
@@ -488,164 +486,180 @@
               <option value="9d2bb3fe-0719-448c-bc94-b7dfd5030943">🧪 ТЕСТ — 1 ₽ (только для разработчика)</option> 
              
             </select>
+          </div> 
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      <div class="fg fg-date">
+        <label class="fl">Дата приема * — <span id="dateLabel" style="text-decoration: underline; font-weight: 500;">не
+            выбрана</span></label>
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="chMon(-1)">‹</button>
+          <span class="cal-month" id="calM"></span>
+          <button class="cal-nav-btn" onclick="chMon(1)">›</button>
+        </div>
+        <div class="cal-grid-f" id="calG"></div>
+      </div>
+
+      <div class="fg fg-time">
+        <label class="fl">Время сессии * <span id="timeLabel" style="font-weight: 600;"></span></label>
+        <div class="time-grid">
+          <div class="tsl" onclick="selT(this)">10:00</div>
+          <div class="tsl" onclick="selT(this)">11:00</div>
+          <div class="tsl busy">12:00</div>
+          <div class="tsl busy">13:00</div>
+          <div class="tsl" onclick="selT(this)">14:00</div>
+          <div class="tsl busy">15:00</div>
+          <div class="tsl" onclick="selT(this)">16:00</div>
+          <div class="tsl" onclick="selT(this)">17:00</div>
+          <div class="tsl busy">18:00</div>
+          <div class="tsl" onclick="selT(this)">19:00</div>
+        </div>
+      </div>
+
+      <div class="fg fg-format">
+        <label class="fl">Формат проведения</label>
+        <div class="fmt-cards">
+          <div class="fmt-card on" id="fmtOn" onclick="selFmt('on')">
+            <div class="fn">Онлайн</div>
+            <div class="fd">Zoom / Телемост</div>
           </div>
-
-          <div class="fg fg-date">
-            <label class="fl">Дата приема * — <span id="dateLabel"
-                style="text-decoration: underline; font-weight: 500;">не выбрана</span></label>
-            <div class="cal-nav">
-              <button class="cal-nav-btn" onclick="chMon(-1)">‹</button>
-              <span class="cal-month" id="calM"></span>
-              <button class="cal-nav-btn" onclick="chMon(1)">›</button>
-            </div>
-            <div class="cal-grid-f" id="calG"></div>
+          <div class="fmt-card" id="fmtOff" onclick="selFmt('off')">
+            <div class="fn">Очно в кабинете</div>
+            <div class="fd">г. Екатеринбург, ул. Уральских рабочих 67, Лингвистический центр ABC</div>
           </div>
+        </div>
+      </div>
 
-          <div class="fg fg-time">
-            <label class="fl">Время сессии * <span id="timeLabel" style="font-weight: 600;"></span></label>
-            <div class="time-grid">
-              <div class="tsl" onclick="selT(this)">10:00</div>
-              <div class="tsl" onclick="selT(this)">11:00</div>
-              <div class="tsl busy">12:00</div>
-              <div class="tsl busy">13:00</div>
-              <div class="tsl" onclick="selT(this)">14:00</div>
-              <div class="tsl busy">15:00</div>
-              <div class="tsl" onclick="selT(this)">16:00</div>
-              <div class="tsl" onclick="selT(this)">17:00</div>
-              <div class="tsl busy">18:00</div>
-              <div class="tsl" onclick="selT(this)">19:00</div>
-            </div>
-          </div>
-
-          <div class="fg fg-format">
-            <label class="fl">Формат проведения</label>
-            <div class="fmt-cards">
-              <div class="fmt-card on" id="fmtOn" onclick="selFmt('on')">
-                <div class="fn">Онлайн</div>
-                <div class="fd">Zoom / Телемост</div>
-              </div>
-              <div class="fmt-card" id="fmtOff" onclick="selFmt('off')">
-                <div class="fn">Очно в кабинете</div>
-                <div class="fd">г. Екатеринбург, ул. Уральских рабочих 67, Лингвистический центр ABC</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="fg fg-payment">
-            <label class="fl">Режим оплаты</label>
-            <div class="pay-opts">
-              <button class="btn-style pay-opt on" onclick="selPay(this)">Полная оплата</button>
-              <button class="btn-style pay-opt" onclick="selPay(this)">Предоплата 50%</button>
-            </div>
-
-            <div class="cancel-hint">Бесплатная отмена или перенос бронирования за 12 часов до сессии</div>
-          </div>
-
-          <div class="fg fg-soglasie" ;
-            style="margin: 16px 0; padding: 11px; background: #FAF8F4; border-radius: 0px; font-size: 13px; line-height: 1.5;">
-            <label class="custom-check">
-              <input type="checkbox" id="consent-check" required>
-              <span>Я даю <a href="javascript:void(0)" onclick="openPersDataModal()"
-                  style="color: inherit; text-decoration: underline;">согласие на обработку персональных данных</a> и
-                принимаю условия <a href="javascript:void(0)" onclick="openOfertaModal()"
-                  style="color: inherit; text-decoration: underline;">договора-оферты</a></span>
-            </label>
-          </div>
-
-          <button class="btn-style fg-submit"
-            style="background: var(--primary) !important; color: var(--bg-card) !important; max-width: 100%;"
-            onclick="submitB()">Записаться на прием</button>
-
+      <div class="fg fg-payment">
+        <label class="fl">Режим оплаты</label>
+        <div class="pay-opts">
+          <button class="btn-style pay-opt on" onclick="selPay(this)">Полная оплата</button>
+          <button class="btn-style pay-opt" onclick="selPay(this)">Предоплата 50%</button>
         </div>
 
-
-
-
-
-
-
-
+        <div class="cancel-hint">Бесплатная отмена или перенос бронирования за 12 часов до сессии</div>
       </div>
+
+      <div class="fg fg-soglasie" ;
+        style="margin: 16px 0; padding: 11px; background: #FAF8F4; border-radius: 0px; font-size: 13px; line-height: 1.5;">
+        <label class="custom-check">
+          <input type="checkbox" id="consent-check" required>
+          <span>Я даю <a href="javascript:void(0)" onclick="openPersDataModal()"
+              style="color: inherit; text-decoration: underline;">согласие на обработку персональных данных</a> и
+            принимаю условия <a href="javascript:void(0)" onclick="openOfertaModal()"
+              style="color: inherit; text-decoration: underline;">договора-оферты</a></span>
+        </label>
+      </div>
+
+      <button class="btn-style fg-submit"
+        style="background: var(--primary) !important; color: var(--bg-card) !important; max-width: 100%;"
+        onclick="submitB()">Записаться на прием</button>
+
+    </div>-->
+
+
+
+
+
+
+
+
+  </div>
+  </div>
+
+  <div id="s-formats" class="page-section">
+    <div class="section-header">
+
+      <h2 class="section-heading">Локация и платформы</h2>
     </div>
 
-    <div id="s-formats" class="page-section">
-      <div class="section-header">
+    <div class="formats-grid-main">
+      <div>
+        <div class="plat-card">
+          <div class="plat-name">Кабинет психологической помощи</div>
+          <div class="plat-sub">Прием ведется в оборудованных помещениях в центрах городов присутствия. Уединенная,
+            спокойная атмосфера.</div>
+          <ul class="rules-list">
+            <li class="rule-row"><span class="rule-dot"></span> г. Екатеринбург, ул. Уральских рабочих 67,
+              Лингвистический центр ABC</li>
+            <li class="rule-row"><span class="rule-dot"></span> Пожалуйста не опаздывайте</li>
+          </ul>
+        </div>
 
-        <h2 class="section-heading">Локация и платформы</h2>
-      </div>
-
-      <div class="formats-grid-main">
-        <div>
+        <div class="platforms-grid">
           <div class="plat-card">
-            <div class="plat-name">Кабинет психологической помощи</div>
-            <div class="plat-sub">Прием ведется в оборудованных помещениях в центрах городов присутствия. Уединенная,
-              спокойная атмосфера.</div>
-            <ul class="rules-list">
-              <li class="rule-row"><span class="rule-dot"></span> г. Екатеринбург, ул. Уральских рабочих 67,
-                Лингвистический центр ABC</li>
-              <li class="rule-row"><span class="rule-dot"></span> Пожалуйста не опаздывайте</li>
-            </ul>
+            <div class="plat-name">Zoom</div>
+            <div class="plat-sub">Видеоконференции</div>
           </div>
-
-          <div class="platforms-grid">
-            <div class="plat-card">
-              <div class="plat-name">Zoom</div>
-              <div class="plat-sub">Видеоконференции</div>
-            </div>
-            <div class="plat-card">
-              <div class="plat-name">Телемост</div>
-              <div class="plat-sub">Работа в браузере</div>
-            </div>
+          <div class="plat-card">
+            <div class="plat-name">Телемост</div>
+            <div class="plat-sub">Работа в браузере</div>
           </div>
         </div>
+      </div>
 
-        <div class="map-col">
-          <div class="map-block">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d859.5485099688846!2d60.586876999999994!3d56.90001389999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x43c1721aa1244d45%3A0x1140491ae9b77c38!2z0YPQuy4g0KPRgNCw0LvRjNGB0LrQuNGFINCg0LDQsdC-0YfQuNGFLCA2Nywg0JXQutCw0YLQtdGA0LjQvdCx0YPRgNCzLCDQodCy0LXRgNC00LvQvtCy0YHQutCw0Y8g0L7QsdC7LiwgNjIwMDQy!5e0!3m2!1sru!2sru!4v1782836334470!5m2!1sru!2sru"
-              width="100%" height="100%" frameborder="0" style="border:0;" allowfullscreen="" loading="lazy"
-              referrerpolicy="strict-origin-when-cross-origin">
-            </iframe>
-          </div>
+      <div class="map-col">
+        <div class="map-block">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d859.5485099688846!2d60.586876999999994!3d56.90001389999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x43c1721aa1244d45%3A0x1140491ae9b77c38!2z0YPQuy4g0KPRgNCw0LvRjNGB0LrQuNGFINCg0LDQsdC-0YfQuNGFLCA2Nywg0JXQutCw0YLQtdGA0LjQvdCx0YPRgNCzLCDQodCy0LXRgNC00LvQvtCy0YHQutCw0Y8g0L7QsdC7LiwgNjIwMDQy!5e0!3m2!1sru!2sru!4v1782836334470!5m2!1sru!2sru"
+            width="100%" height="100%" frameborder="0" style="border:0;" allowfullscreen="" loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin">
+          </iframe>
         </div>
       </div>
     </div>
+  </div>
 
-    <footer>
-      <div class="footer-grid">
-        <div>
-          <div class="footer-brand">Елена Костарева</div>
-          <div class="footer-tag">Кандидат психологических наук, практикующий психолог.</div>
-          <div style="font-size: 12px; color: #666; margin-top: 8px;">Доцент Центра практической психологии и
-            психоанализа ИППК УГИ УрФУ; руководитель
-            программы
-            профпереподготовки по клинической (медицинской) психологии; медицинский психолог государственной медицинской
-            организации; лектор Российского общества «Знание»; член Российского психологического общества (Свердловское
-            отделение).</div>
-        </div>
-
-        <div class="foot-contact-container">
-          <div class="foot-col-h">Быстрая связь</div>
-          <div class="foot-ct-item"><a href="https://vk.ru/ekostapsy" target="_blank" class="fci-v">ВКонтакте</a></div>
-          <div class="foot-ct-item"><a href="https://t.me/psychologistekosta" class="fci-v">Telegram</a></div>
-        </div>
+  <footer>
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">Елена Костарева</div>
+        <div class="footer-tag">Кандидат психологических наук, практикующий психолог.</div>
+        <div style="font-size: 12px; color: #666; margin-top: 8px;">Доцент Центра практической психологии и
+          психоанализа ИППК УГИ УрФУ; руководитель
+          программы
+          профпереподготовки по клинической (медицинской) психологии; медицинский психолог государственной медицинской
+          организации; лектор Российского общества «Знание»; член Российского психологического общества (Свердловское
+          отделение).</div>
       </div>
 
-      <div class="footer-bottom">
-        <div>© 2026 Костарева Елена Николаевна. Все права защищены.
-          <p style="margin: 4px 0;">Самозанятая</p>
-          <p style="margin: 4px 0;">ИНН: 666300057691</p>
-          <p style="margin: 4px 0;">Email для обращений: <a href="mailto:e-kosta@yandex.ru"
-              style="color: inherit;">e-kosta@yandex.ru</a></p>
-        </div>
-        <div class="foot-policy">
-          <a href="javascript:void(0)" onclick="openPolicyModal()">Политика конфиденциальности</a> |
-          <a href="javascript:void(0)" onclick="openPersDataModal()">Согласие на обработку персональных данных</a> |
-          <a href="javascript:void(0)" onclick="openOfertaModal()">Договор-оферта</a> |
-          <a href="javascript:void(0)" onclick="openBackRuleModal()">Правила возврата денежных средств</a>
-        </div>
+      <div class="foot-contact-container">
+        <div class="foot-col-h">Быстрая связь</div>
+        <div class="foot-ct-item"><a href="https://vk.ru/ekostapsy" target="_blank" class="fci-v">ВКонтакте</a></div>
+        <div class="foot-ct-item"><a href="https://t.me/psychologistekosta" class="fci-v">Telegram</a></div>
       </div>
-    </footer>
+    </div>
+
+    <div class="footer-bottom">
+      <div>© 2026 Костарева Елена Николаевна. Все права защищены.
+        <p style="margin: 4px 0;">Самозанятая</p>
+        <p style="margin: 4px 0;">ИНН: 666300057691</p>
+        <p style="margin: 4px 0;">Email для обращений: <a href="mailto:e-kosta@yandex.ru"
+            style="color: inherit;">e-kosta@yandex.ru</a></p>
+      </div>
+      <div class="foot-policy">
+        <a href="javascript:void(0)" onclick="openPolicyModal()">Политика конфиденциальности</a> |
+        <a href="javascript:void(0)" onclick="openPersDataModal()">Согласие на обработку персональных данных</a> |
+        <a href="javascript:void(0)" onclick="openOfertaModal()">Договор-оферта</a> |
+        <a href="javascript:void(0)" onclick="openBackRuleModal()">Правила возврата денежных средств</a>
+      </div>
+    </div>
+  </footer>
 
   </div>
 
