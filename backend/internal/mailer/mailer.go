@@ -147,6 +147,7 @@ type CancellationData struct {
 	AppointmentDate time.Time
 	Refund          bool
 	DeadlineHours   int
+	StaffInitiated  bool
 }
 
 func (m *Mailer) SendCancellationConfirmation(to string, d CancellationData) error {
@@ -162,22 +163,28 @@ func (m *Mailer) SendCancellationConfirmation(to string, d CancellationData) err
 		)
 	}
 
-	subject := fmt.Sprintf("%s, вы отменили запись к Елене", d.FirstName)
+	var subject, introPlain, introHTML string
+	if d.StaffInitiated {
+		subject = "Ваша запись к Елене отменена"
+		introPlain = fmt.Sprintf("Запись на приём %s к Елене была отменена.", date)
+		introHTML = fmt.Sprintf("Запись на приём <strong>%s</strong> к Елене Костаревой была отменена.", html.EscapeString(date))
+	} else {
+		subject = fmt.Sprintf("%s, вы отменили запись к Елене", d.FirstName)
+		introPlain = fmt.Sprintf("Вы отменили запись на приём %s к Елене.", date)
+		introHTML = fmt.Sprintf("Вы отменили запись на приём <strong>%s</strong> к Елене Костаревой.", html.EscapeString(date))
+	}
 
-	plainText := fmt.Sprintf(
-		"Вы отменили запись на приём %s к Елене.\n\n%s",
-		date, refundNote,
-	)
+	plainText := fmt.Sprintf("%s\n\n%s", introPlain, refundNote)
 
 	body := fmt.Sprintf(`
 		<div style="font-family:%s; font-size:20px; font-weight:600; color:%s; margin-bottom:16px;">Запись отменена</div>
 		<div style="font-family:%s; font-size:15px; color:%s; line-height:1.7;">
-			Вы отменили запись на приём <strong>%s</strong> к Елене Костаревой.
+			%s
 		</div>
 		%s
 	`,
 		fontHeading, colorText,
-		fontBody, colorTextMuted, html.EscapeString(date),
+		fontBody, colorTextMuted, introHTML,
 		infoBox(html.EscapeString(refundNote)),
 	)
 

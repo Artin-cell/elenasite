@@ -187,6 +187,7 @@ func (s *AppointmentService) NotifyRefunded(ctx context.Context, apptID uuid.UUI
 		AppointmentDate: appt.StartsAt,
 		Refund:          true,
 		DeadlineHours:   s.cancellationDeadlineHours,
+		StaffInitiated:  true,
 	})
 }
 
