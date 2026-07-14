@@ -70,7 +70,11 @@ function selT(el) {
   document.getElementById('timeLabel').textContent = '— ' + selectedTimeStr;
 }
 
+let selectedFormat = 'online';
+let selectedPayMode = 'full';
+
 function selFmt(f) {
+  selectedFormat = (f === 'on') ? 'online' : 'offline';
   document.getElementById('fmtOn').classList.toggle('on', f === 'on');
   document.getElementById('fmtOff').classList.toggle('on', f === 'off');
 }
@@ -78,6 +82,7 @@ function selFmt(f) {
 function selPay(el) {
   document.querySelectorAll('.pay-opt').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
+  selectedPayMode = el.textContent.includes('50%') ? 'prepay_50' : 'full';
 }
 
 function submitB() {
@@ -112,9 +117,64 @@ function submitB() {
   document.getElementById('mdl').classList.add('open');
 }
 
-function confirmFinalB() {
-  document.getElementById('modalStep1').style.display = 'none';
-  document.getElementById('modalStep2').style.display = 'block';
+async function confirmFinalB() {
+  const name = document.getElementById('bName').value.trim();
+  const phone = document.getElementById('bPhone').value.trim();
+  const email = document.getElementById('bEmail').value.trim();
+  const serviceId = document.getElementById('bService').value;
+
+  const nameParts = name.split(' ').filter(Boolean);
+  const firstName = nameParts[0] || name;
+  const lastName = nameParts.slice(1).join(' ') || firstName;
+
+  const [hh, mm] = selectedTimeStr.split(':').map(Number);
+  const startsAtISO = new Date(selDay.y, selDay.m, selDay.d, hh, mm, 0).toISOString();
+
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+
+  try {
+    const response = await fetch('/api/v1/appointments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client: {
+          first_name: firstName,
+          last_name: lastName,
+          patronym: '',
+          phone: phone,
+          email: email,
+        },
+        service_id: serviceId,
+        format: selectedFormat,
+        starts_at: startsAtISO,
+        payment_mode: selectedPayMode,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      if (response.status === 409) {
+        throw new Error('Это время уже занято, пожалуйста, выберите другое.');
+      }
+      throw new Error(result.error || 'Не удалось создать запись. Попробуйте ещё раз.');
+    }
+
+    if (result.payment_url) {
+      window.location.href = result.payment_url;
+      return;
+    }
+
+    document.getElementById('modalStep1').style.display = 'none';
+    document.getElementById('modalStep2').style.display = 'block';
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Всё верно, подтвердить';
+  }
 }
 
 function closeMdl() {
