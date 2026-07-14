@@ -177,6 +177,18 @@ func (s *AppointmentService) ConfirmPayment(ctx context.Context, apptID uuid.UUI
 	return s.issueTokenAndNotify(ctx, appt, appt.Client)
 }
 
+func (s *AppointmentService) NotifyRefunded(ctx context.Context, apptID uuid.UUID) error {
+	appt, err := s.apptRepo.GetByIDWithRelations(ctx, apptID)
+	if err != nil {
+		return err
+	}
+	return s.mailer.SendCancellationConfirmation(appt.Client.Email, mailer.CancellationData{
+		FirstName:       appt.Client.FirstName,
+		AppointmentDate: appt.StartsAt,
+		Refund:          true,
+		DeadlineHours:   s.cancellationDeadlineHours,
+	})
+}
 
 func (s *AppointmentService) NotifyPaymentFailed(ctx context.Context, apptID uuid.UUID) error {
 	appt, err := s.apptRepo.GetByIDWithRelations(ctx, apptID)

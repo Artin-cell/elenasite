@@ -89,6 +89,12 @@ func (h *Handler) YooKassaWebhook(c *gin.Context) {
 		if err := h.apptRepo.UpdatePaymentStatus(c.Request.Context(), apptID, models.PaymentStatusRefunded); err != nil {
 			log.Printf("yookassa webhook: update status refunded: %v", err)
 		}
+		if err := h.apptRepo.UpdateStatus(c.Request.Context(), apptID, models.StatusCancelled); err != nil {
+			log.Printf("yookassa webhook: cancel refunded appointment: %v", err)
+		}
+		if err := h.apptSvc.NotifyRefunded(c.Request.Context(), apptID); err != nil {
+			log.Printf("yookassa webhook: notify refunded: %v", err)
+		}
 	}
 
 	c.Status(http.StatusOK)
