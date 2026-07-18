@@ -10,12 +10,12 @@
         const SESSION_DURATION = 8 * 60 * 60 * 1000;
 
         (function checkAuth() {
-            const isAdmin = sessionStorage.getItem('isAdmin');
+            const token = sessionStorage.getItem('adminToken');
             const loginTime = parseInt(sessionStorage.getItem('loginTime') || '0');
             const now = Date.now();
 
             // Проверка: авторизован ли и не истекла ли сессия
-            if (!isAdmin || (now - loginTime) > SESSION_DURATION) {
+            if (!token || (now - loginTime) > SESSION_DURATION) {
                 // Очистить сессию и редирект на страницу входа
                 sessionStorage.clear();
                 window.location.replace('/admin/');

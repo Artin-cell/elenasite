@@ -40,7 +40,7 @@ func New(
 	serviceRepo *repository.ServiceRepo,
 	newsRepo *repository.NewsRepo,
 	reviewRepo *repository.ReviewRepo,
-	blockedSlotRepo *repository.BlockedSlotRepo
+	blockedSlotRepo *repository.BlockedSlotRepo,
 	payment service.PaymentProvider,
 	jwtSecret string,
 	jwtTTL time.Duration,

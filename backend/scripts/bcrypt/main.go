@@ -17,5 +17,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Print(string(hash))
+	fmt.Println(string(hash))
 }
