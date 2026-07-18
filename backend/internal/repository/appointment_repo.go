@@ -199,6 +199,19 @@ func (r *AppointmentRepo) GetByPaymentID(ctx context.Context, paymentID string) 
 	return &a, nil
 }
 
+func (r *AppointmentRepo) ListBusyTimes(ctx context.Context, from, to time.Time) ([]time.Time, error) {
+	var times []time.Time
+	err := r.db.SelectContext(ctx, &times, `
+		select starts_at from appointments
+		where starts_at >= $1 and starts_at < $2
+		and status != 'cancelled'
+	`, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("list busy times: %w", err)
+	}
+	return times, nil
+}
+
 type CancellationTokenRepo struct {
 	db *sqlx.DB
 }

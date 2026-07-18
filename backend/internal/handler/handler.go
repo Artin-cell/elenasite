@@ -65,6 +65,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	api.GET("/services", h.ListServices)
 	api.GET("/news", h.ListNews)
 	api.GET("/reviews", h.ListReviews)
+	api.GET("/availability", h.GetAvailability)
 
 	api.POST("/appointments", h.CreateAppointment)
 
@@ -132,6 +133,44 @@ func (h *Handler) ListReviews(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, list)
+}
+
+func (h *Handler) GetAvailability(c *gin.Context) {
+	loc, err := time.LoadLocation("Asia/Yekaterinburg")
+	if err != nil {
+		loc = time.FixedZone("YEKT", 5*3600)
+	}
+
+	monthParam := c.Query("month") // формат "2026-07"
+	var from time.Time
+	if monthParam != "" {
+		parsed, err := time.ParseInLocation("2006-01", monthParam, loc)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid month, expected YYYY-MM"})
+			return
+		}
+		from = parsed
+	} else {
+		now := time.Now().In(loc)
+		from = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+	}
+	to := from.AddDate(0, 1, 0)
+
+	busyTimes, err := h.apptRepo.ListBusyTimes(c.Request.Context(), from.UTC(), to.UTC())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := make(map[string][]string)
+	for _, t := range busyTimes {
+		local := t.In(loc)
+		dateKey := local.Format("2006-01-02")
+		timeKey := local.Format("15:04")
+		result[dateKey] = append(result[dateKey], timeKey)
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *Handler) CreateAppointment(c *gin.Context) {

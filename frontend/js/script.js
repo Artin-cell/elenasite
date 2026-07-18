@@ -8,7 +8,25 @@ function acceptCookies() {
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const SLOT_TIMES = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 let cDate = new Date(), selDay = null, selectedTimeStr = "";
+let busyByDate = {};
+
+function formatDateKey(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+async function fetchAvailability(y, m) {
+  const monthParam = `${y}-${String(m + 1).padStart(2, '0')}`;
+  try {
+    const response = await fetch(`/api/v1/availability?month=${monthParam}`);
+    busyByDate = await response.json();
+  } catch (err) {
+    console.error('Не удалось загрузить занятые слоты:', err);
+    busyByDate = {};
+  }
+  renderCal();
+}
 
 function renderCal() {
   const y = cDate.getFullYear(), m = cDate.getMonth();
@@ -35,8 +53,10 @@ function renderCal() {
     el.className = 'calday';
     el.textContent = d;
     const td = new Date(y, m, d);
+    const dateKey = formatDateKey(y, m, d);
+    const isFull = (busyByDate[dateKey] || []).length >= SLOT_TIMES.length;
 
-    if (td < today && td.toDateString() !== today.toDateString()) {
+    if ((td < today && td.toDateString() !== today.toDateString()) || isFull) {
       el.classList.add('dis');
     } else if (td.toDateString() === today.toDateString()) {
       el.classList.add('tod');
@@ -57,10 +77,41 @@ function setDateClick(el, d, m, y) {
   el.classList.add('sel');
   selDay = { d, m, y };
   document.getElementById('dateLabel').textContent = d + ' ' + MONTHS[m] + ' ' + y;
+  renderTimeSlots(formatDateKey(y, m, d));
 }
 
-function chMon(dir) { cDate.setMonth(cDate.getMonth() + dir); renderCal(); }
-renderCal();
+function renderTimeSlots(dateKey) {
+  selectedTimeStr = '';
+  document.getElementById('timeLabel').textContent = '';
+
+  const busy = busyByDate[dateKey] || [];
+  const grid = document.getElementById('timeGrid');
+  grid.innerHTML = '';
+
+  SLOT_TIMES.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tsl';
+    el.textContent = t;
+    if (busy.includes(t)) {
+      el.classList.add('busy');
+    } else {
+      el.addEventListener('click', () => selT(el));
+    }
+    grid.appendChild(el);
+  });
+}
+
+function chMon(dir) {
+  cDate.setMonth(cDate.getMonth() + dir);
+  selDay = null;
+  selectedTimeStr = '';
+  document.getElementById('dateLabel').textContent = 'не выбрана';
+  document.getElementById('timeLabel').textContent = '';
+  document.getElementById('timeGrid').innerHTML = '<div style="grid-column: 1/-1; color: var(--text-muted); font-size: 13px;">Сначала выберите дату приёма</div>';
+  fetchAvailability(cDate.getFullYear(), cDate.getMonth());
+}
+
+fetchAvailability(cDate.getFullYear(), cDate.getMonth());
 
 function selT(el) {
   if (el.classList.contains('busy')) return;
