@@ -24,6 +24,7 @@ type Handler struct {
 	serviceRepo *repository.ServiceRepo
 	newsRepo    *repository.NewsRepo
 	reviewRepo  *repository.ReviewRepo
+	blockedSlotRepo *repository.BlockedSlotRepo
 	payment     service.PaymentProvider
 	jwtSecret   string
 	jwtTTL      time.Duration
@@ -39,6 +40,7 @@ func New(
 	serviceRepo *repository.ServiceRepo,
 	newsRepo *repository.NewsRepo,
 	reviewRepo *repository.ReviewRepo,
+	blockedSlotRepo *repository.BlockedSlotRepo
 	payment service.PaymentProvider,
 	jwtSecret string,
 	jwtTTL time.Duration,
@@ -52,12 +54,15 @@ func New(
 		serviceRepo:        serviceRepo,
 		newsRepo:           newsRepo,
 		reviewRepo:         reviewRepo,
+		blockedSlotRepo: 	blockedSlotRepo,
 		payment:            payment,
 		jwtSecret:          jwtSecret,
 		jwtTTL:             jwtTTL,
 		webhookIPWhitelist: webhookIPWhitelist,
 	}
 }
+
+var allSlotTimes = []string{"10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"}
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
@@ -93,6 +98,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		protected.POST("/services", h.AdminCreateService)
 		protected.PUT("/services/:id", h.AdminUpdateService)
 		protected.DELETE("/services/:id", h.AdminDeleteService)
+
+		protected.GET("/blocks", h.AdminListBlocks)
+		protected.POST("/blocks", h.AdminCreateBlock)
+		protected.DELETE("/blocks/:id", h.AdminDeleteBlock)
 
 		protected.GET("/news", h.AdminListNews)
 		protected.POST("/news", h.AdminCreateNews)
@@ -141,7 +150,7 @@ func (h *Handler) GetAvailability(c *gin.Context) {
 		loc = time.FixedZone("YEKT", 5*3600)
 	}
 
-	monthParam := c.Query("month") // формат "2026-07"
+	monthParam := c.Query("month")
 	var from time.Time
 	if monthParam != "" {
 		parsed, err := time.ParseInLocation("2006-01", monthParam, loc)
@@ -168,6 +177,20 @@ func (h *Handler) GetAvailability(c *gin.Context) {
 		dateKey := local.Format("2006-01-02")
 		timeKey := local.Format("15:04")
 		result[dateKey] = append(result[dateKey], timeKey)
+	}
+
+	blocks, err := h.blockedSlotRepo.ListRange(c.Request.Context(), from, to)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	for _, b := range blocks {
+		dateKey := b.BlockedDate.Format("2006-01-02")
+		if b.SlotTime == nil {
+			result[dateKey] = append(result[dateKey], allSlotTimes...)
+		} else {
+			result[dateKey] = append(result[dateKey], *b.SlotTime)
+		}
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -560,4 +583,74 @@ func (h *Handler) AdminDeleteReview(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+
+func (h *Handler) AdminListBlocks(c *gin.Context) {
+	loc, err := time.LoadLocation("Asia/Yekaterinburg")
+	if err != nil {
+		loc = time.FixedZone("YEKT", 5*3600)
+	}
+
+	monthParam := c.Query("month")
+	var from time.Time
+	if monthParam != "" {
+		parsed, err := time.ParseInLocation("2006-01", monthParam, loc)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid month, expected YYYY-MM"})
+			return
+		}
+		from = parsed
+	} else {
+		now := time.Now().In(loc)
+		from = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+	}
+	to := from.AddDate(0, 1, 0)
+
+	list, err := h.blockedSlotRepo.ListRange(c.Request.Context(), from, to)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+type createBlockRequest struct {
+	Date     string  `json:"date" binding:"required"`
+	SlotTime *string `json:"slot_time"`
+	Reason   string  `json:"reason"`
+}
+
+func (h *Handler) AdminCreateBlock(c *gin.Context) {
+	var req createBlockRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid date, expected YYYY-MM-DD"})
+		return
+	}
+
+	bs, err := h.blockedSlotRepo.Create(c.Request.Context(), date, req.SlotTime, req.Reason)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, bs)
+}
+
+func (h *Handler) AdminDeleteBlock(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := h.blockedSlotRepo.Delete(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

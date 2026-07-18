@@ -34,6 +34,7 @@ func main() {
 	serviceRepo := repository.NewServiceRepo(database)
 	newsRepo := repository.NewNewsRepo(database)
 	reviewRepo := repository.NewReviewRepo(database)
+	blockedSlotRepo := repository.NewBlockedSlotRepo(database)
 
 	var mailSender service.MailSender
 	if cfg.SMTP.Host == "" {
@@ -90,6 +91,7 @@ func main() {
 		serviceRepo,
 		newsRepo,
 		reviewRepo,
+		blockedSlotRepo,
 		paymentProvider,
 		cfg.JWTSecret,
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
