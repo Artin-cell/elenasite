@@ -1063,14 +1063,14 @@
       margin-top: 15px;
     }
 
-    .contacts-grid > *:nth-child(odd) {
-  justify-self: end;
-}
+    .contacts-grid>*:nth-child(odd) {
+      justify-self: end;
+    }
 
-/* Правая колонка (четные элементы) - выравнивание по левому краю */
-.contacts-grid > *:nth-child(even) {
-  justify-self: start;
-}
+    /* Правая колонка (четные элементы) - выравнивание по левому краю */
+    .contacts-grid>*:nth-child(even) {
+      justify-self: start;
+    }
 
     /* ПОДВАЛ */
     footer {
@@ -1521,28 +1521,30 @@
     .custom-check span {
       position: relative;
       padding-left: 22px;
+      cursor: pointer;
     }
 
+    /* Большой квадрат (рамка) — в обычном состоянии */
     .custom-check span::before {
       content: "";
       position: absolute;
       left: 0;
       top: 2px;
-      width: 12px;
-      height: 12px;
-      border: 1.5px solid #243447;
+      width: 14px;
+      height: 14px;
+      border: 1px solid #243447;
       background: #FAF8F4;
     }
 
-    .custom-check input:checked+span::after {
-      content: "";
-      position: absolute;
-      left: 3.5px;
-      top: 5.5px;
-      width: 8px;
-      height: 8px;
-      background: #243447;
+    /* Убираем старый ::after с маленьким квадратиком — он больше не нужен */
+
+    /* Когда чекбокс ОТМЕЧЕН: большой квадрат становится синим,
+   а внутри появляется "рамка" цвета фона толщиной 2px */
+    .custom-check input:checked+span::before {
+      background: #385C8E;
+      /* фирменный синий (--primary) */
+      border-color: #385C8E;
+      /* рамка того же цвета, сливается */
+      box-shadow: inset 0 0 0 2px #FAF8F4;
+      /* внутренняя "рамка" цвета фона */
     }
-
-
-    

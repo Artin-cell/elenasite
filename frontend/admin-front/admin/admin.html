@@ -277,7 +277,38 @@
                 <h1 class="section-title">Управление записями клиентов</h1>
                 <p class="section-subtitle">Просматривайте и управляйте всеми заявками на консультацию</p>
             </div>
+            <button class="btn" style="margin-bottom: 20px;" onclick="toggleAddClientForm()">+ Добавить клиента</button>
 
+            <div class="card" id="addClientForm" style="display: none; margin-bottom: 30px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Имя *</label>
+                        <input type="text" class="form-input" id="newClientFirstName">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Фамилия *</label>
+                        <input type="text" class="form-input" id="newClientLastName">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Отчество</label>
+                        <input type="text" class="form-input" id="newClientPatronym">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Телефон *</label>
+                        <input type="tel" class="form-input" id="newClientPhone" placeholder="+7...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" class="form-input" id="newClientEmail">
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-small" onclick="saveNewClient()">Сохранить</button>
+                    <button class="btn btn-small btn-danger" onclick="toggleAddClientForm()">Отмена</button>
+                </div>
+            </div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -291,7 +322,9 @@
                         </tr>
                     </thead>
                     <tbody id="bookingsTableBody">
-                        <tr><td colspan="6">Загрузка…</td></tr>
+                        <tr>
+                            <td colspan="6">Загрузка…</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
