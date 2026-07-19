@@ -88,6 +88,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	protected := admin.Group("", middleware.RequireAdmin(h.jwtSecret))
 	{
 		protected.GET("/clients", h.AdminListClients)
+		protected.POST("/clients", h.AdminCreateClient)
 		protected.DELETE("/clients/:id", h.AdminDeleteClient)
 
 		protected.GET("/appointments", h.AdminListAppointments)
@@ -349,6 +350,40 @@ func (h *Handler) AdminDeleteClient(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *Handler) AdminCreateClient(c *gin.Context) {
+	var req struct {
+		FirstName string `json:"first_name" binding:"required"`
+		LastName  string `json:"last_name" binding:"required"`
+		Patronym  string `json:"patronym"`
+		Phone     string `json:"phone" binding:"required"`
+		Email     string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	client := &models.Client{
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Patronym:  req.Patronym,
+		Phone:     req.Phone,
+		Email:     req.Email,
+	}
+
+	created, err := h.clientRepo.FindOrCreate(c.Request.Context(), client)
+	if err != nil {
+		if errors.Is(err, repository.ErrPhoneTakenByAnotherEmail) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, created)
 }
 
 func (h *Handler) AdminListAppointments(c *gin.Context) {

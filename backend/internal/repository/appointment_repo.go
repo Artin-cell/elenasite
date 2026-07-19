@@ -93,41 +93,84 @@ func (r *AppointmentRepo) GetByIDWithRelations(ctx context.Context, id uuid.UUID
 }
 
 func (r *AppointmentRepo) List(ctx context.Context, opts ListAppointmentsOpts) ([]models.Appointment, error) {
-	q := `select * from appointments where 1=1`
+	type row struct {
+		models.Appointment
+		CFirstName string `db:"c_first_name"`
+		CLastName  string `db:"c_last_name"`
+		CPatronym  string `db:"c_patronym"`
+		CEmail     string `db:"c_email"`
+		CPhone     string `db:"c_phone"`
+		STitle     string `db:"s_title"`
+	}
+
+	q := `
+		select
+			a.*,
+			c.first_name as c_first_name,
+			c.last_name  as c_last_name,
+			c.patronym   as c_patronym,
+			c.email      as c_email,
+			c.phone      as c_phone,
+			s.title      as s_title
+		from appointments a
+		join clients  c on c.id = a.client_id
+		join services s on s.id = a.service_id
+		where 1=1
+	`
 	args := []any{}
 	i := 1
 
 	if opts.Status != "" {
-		q += fmt.Sprintf(" and status = $%d", i)
+		q += fmt.Sprintf(" and a.status = $%d", i)
 		args = append(args, opts.Status)
 		i++
 	}
 	if !opts.From.IsZero() {
-		q += fmt.Sprintf(" and starts_at >= $%d", i)
+		q += fmt.Sprintf(" and a.starts_at >= $%d", i)
 		args = append(args, opts.From)
 		i++
 	}
 	if !opts.To.IsZero() {
-		q += fmt.Sprintf(" and starts_at <= $%d", i)
+		q += fmt.Sprintf(" and a.starts_at <= $%d", i)
 		args = append(args, opts.To)
 		i++
 	}
 	if opts.ClientID != uuid.Nil {
-		q += fmt.Sprintf(" and client_id = $%d", i)
+		q += fmt.Sprintf(" and a.client_id = $%d", i)
 		args = append(args, opts.ClientID)
 		i++
 	}
 
-	q += " order by starts_at asc"
+	q += " order by a.starts_at asc"
 
 	if opts.Limit > 0 {
 		q += fmt.Sprintf(" limit $%d offset $%d", i, i+1)
 		args = append(args, opts.Limit, opts.Offset)
 	}
 
-	var list []models.Appointment
-	err := r.db.SelectContext(ctx, &list, q, args...)
-	return list, err
+	var rows []row
+	if err := r.db.SelectContext(ctx, &rows, q, args...); err != nil {
+		return nil, err
+	}
+
+	list := make([]models.Appointment, len(rows))
+	for idx, rr := range rows {
+		appt := rr.Appointment
+		appt.Client = &models.Client{
+			ID:        appt.ClientID,
+			FirstName: rr.CFirstName,
+			LastName:  rr.CLastName,
+			Patronym:  rr.CPatronym,
+			Email:     rr.CEmail,
+			Phone:     rr.CPhone,
+		}
+		appt.Service = &models.Service{
+			ID:    appt.ServiceID,
+			Title: rr.STitle,
+		}
+		list[idx] = appt
+	}
+	return list, nil
 }
 
 type ListAppointmentsOpts struct {
