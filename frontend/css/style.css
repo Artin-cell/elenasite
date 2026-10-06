@@ -274,8 +274,8 @@
     }
 
     .hero-photo-inner img {
-      width: 151%;
-      height: 148%;
+      width: 100%;
+      height: 125%;
       object-fit: cover;
     }
 
