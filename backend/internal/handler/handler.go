@@ -7,6 +7,7 @@ import (
 	"elena-backend/internal/repository"
 	"elena-backend/internal/service"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -239,6 +240,7 @@ func (h *Handler) GetAvailability(c *gin.Context) {
 }
 
 func safeAppointmentError(err error) string {
+	log.Printf("appointment error: %v", err)
 	msg := err.Error()
 	for _, allowed := range []string{
 		"нельзя записаться на прошедшее время",
@@ -868,7 +870,7 @@ func (h *Handler) AdminCreateAppointment(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "номер телефона уже используется другим email"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": safeAppointmentError(err)})
 		return
 	}
 
