@@ -366,133 +366,57 @@
         <!-- ВКЛАДКА: РАСПИСАНИЕ -->
         <div id="schedule" class="tab-content">
             <div class="section-header">
-                <h1 class="section-title">Выставление свободных дат и времени</h1>
-                <p class="section-subtitle">Управляйте своим расписанием и доступными временными слотами</p>
+                <h1 class="section-title">Расписание</h1>
+                <p class="section-subtitle">Закрывайте дни и часы, когда вы не принимаете. Закрытое сразу пропадает из онлайн-записи на сайте. Приём идёт ежедневно с 10:00 до 20:00.</p>
             </div>
 
-            <!-- Календарь -->
             <div class="calendar-container">
                 <div class="calendar-header">
-                    <button class="calendar-nav-btn">← Предыдущий</button>
-                    <h2 class="calendar-month">Июнь 2024</h2>
-                    <button class="calendar-nav-btn">Следующий →</button>
+                    <button class="calendar-nav-btn" onclick="schedChangeMonth(-1)">← Предыдущий</button>
+                    <h2 class="calendar-month" id="schedMonthTitle"></h2>
+                    <button class="calendar-nav-btn" onclick="schedChangeMonth(1)">Следующий →</button>
                 </div>
-
-                <div class="calendar-grid">
-                    <div class="calendar-day-name">Пн</div>
-                    <div class="calendar-day-name">Вт</div>
-                    <div class="calendar-day-name">Ср</div>
-                    <div class="calendar-day-name">Чт</div>
-                    <div class="calendar-day-name">Пт</div>
-                    <div class="calendar-day-name">Сб</div>
-                    <div class="calendar-day-name">Вс</div>
-
-                    <!-- Пустые ячейки для начала месяца -->
-                    <div class="calendar-day empty"></div>
-                    <div class="calendar-day empty"></div>
-                    <div class="calendar-day empty"></div>
-                    <div class="calendar-day empty"></div>
-                    <div class="calendar-day empty"></div>
-                    <div class="calendar-day">1</div>
-                    <div class="calendar-day">2</div>
-
-                    <div class="calendar-day available">3</div>
-                    <div class="calendar-day">4</div>
-                    <div class="calendar-day available">5</div>
-                    <div class="calendar-day">6</div>
-                    <div class="calendar-day available">7</div>
-                    <div class="calendar-day">8</div>
-                    <div class="calendar-day">9</div>
-
-                    <div class="calendar-day available">10</div>
-                    <div class="calendar-day">11</div>
-                    <div class="calendar-day available selected">12</div>
-                    <div class="calendar-day">13</div>
-                    <div class="calendar-day available">14</div>
-                    <div class="calendar-day">15</div>
-                    <div class="calendar-day">16</div>
-
-                    <div class="calendar-day available">17</div>
-                    <div class="calendar-day">18</div>
-                    <div class="calendar-day available">19</div>
-                    <div class="calendar-day">20</div>
-                    <div class="calendar-day available">21</div>
-                    <div class="calendar-day">22</div>
-                    <div class="calendar-day">23</div>
-
-                    <div class="calendar-day available">24</div>
-                    <div class="calendar-day available">25</div>
-                    <div class="calendar-day available">26</div>
-                    <div class="calendar-day">27</div>
-                    <div class="calendar-day available">28</div>
-                    <div class="calendar-day">29</div>
-                    <div class="calendar-day">30</div>
-                </div>
-
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                    <p style="font-size: 13px; color: var(--text-muted);">
-                        <span
-                            style="display: inline-block; width: 12px; height: 12px; background: rgba(56, 92, 142, 0.1); margin-right: 5px; vertical-align: middle;"></span>
-                        Доступные дни
-                        <span
-                            style="display: inline-block; width: 12px; height: 12px; background: var(--primary); margin-left: 20px; margin-right: 5px; vertical-align: middle;"></span>
-                        Выбранный день
-                    </p>
-                </div>
+                <div class="calendar-grid" id="schedCalendar"></div>
+                <p class="sch-legend">
+                    <span class="sch-dot sch-dot-has"></span>есть записи
+                    <span class="sch-dot sch-dot-partial"></span>часть часов закрыта
+                    <span class="sch-dot sch-dot-closed"></span>день закрыт
+                    <span class="sch-dot sch-dot-full"></span>всё занято
+                </p>
             </div>
 
-            <!-- Временные слоты для выбранного дня -->
-            <div class="time-slots-container">
-                <h3
-                    style="font-family: var(--font-serif); font-size: 20px; color: var(--primary); margin-bottom: 10px;">
-                    Доступное время на 12 июня 2024
-                </h3>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-                    Нажмите на временной слот, чтобы сделать его доступным или недоступным для записи
-                </p>
+            <div class="time-slots-container" id="schedDayPanel"></div>
 
-                <div class="time-slots-grid">
-                    <div class="time-slot active">09:00</div>
-                    <div class="time-slot">09:30</div>
-                    <div class="time-slot active">10:00</div>
-                    <div class="time-slot busy">10:30</div>
-                    <div class="time-slot active">11:00</div>
-                    <div class="time-slot">11:30</div>
-                    <div class="time-slot">12:00</div>
-                    <div class="time-slot">12:30</div>
-                    <div class="time-slot active">13:00</div>
-                    <div class="time-slot">13:30</div>
-                    <div class="time-slot active">14:00</div>
-                    <div class="time-slot busy">14:30</div>
-                    <div class="time-slot">15:00</div>
-                    <div class="time-slot">15:30</div>
-                    <div class="time-slot active">16:00</div>
-                    <div class="time-slot">16:30</div>
-                    <div class="time-slot active">17:00</div>
-                    <div class="time-slot">17:30</div>
-                    <div class="time-slot active">18:00</div>
-                    <div class="time-slot">18:30</div>
-                    <div class="time-slot">19:00</div>
-                    <div class="time-slot">19:30</div>
-                    <div class="time-slot">20:00</div>
-                    <div class="time-slot">20:30</div>
+            <div class="time-slots-container sch-period">
+                <h3 class="sch-h3">Закрыть или открыть период</h3>
+                <p class="sch-hint">Например: отпуск, все выходные на несколько месяцев, вечернее время.</p>
+                <div class="sch-form-row">
+                    <label>С <input type="date" id="schedFrom" class="sch-input"></label>
+                    <label>По <input type="date" id="schedTo" class="sch-input"></label>
                 </div>
-
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                    <p style="font-size: 13px; color: var(--text-muted);">
-                        <span
-                            style="display: inline-block; width: 12px; height: 12px; background: var(--primary); margin-right: 5px; vertical-align: middle;"></span>
-                        Доступно для записи
-                        <span
-                            style="display: inline-block; width: 12px; height: 12px; border: 1px solid var(--border-color); margin-left: 20px; margin-right: 5px; vertical-align: middle;"></span>
-                        Недоступно
-                        <span
-                            style="display: inline-block; width: 12px; height: 12px; opacity: 0.3; text-decoration: line-through; margin-left: 20px; margin-right: 5px; vertical-align: middle;">—</span>
-                        Уже занято
-                    </p>
+                <div class="sch-form-row">
+                    <label><input type="checkbox" class="sch-wd" value="1" checked> Пн</label>
+                    <label><input type="checkbox" class="sch-wd" value="2" checked> Вт</label>
+                    <label><input type="checkbox" class="sch-wd" value="3" checked> Ср</label>
+                    <label><input type="checkbox" class="sch-wd" value="4" checked> Чт</label>
+                    <label><input type="checkbox" class="sch-wd" value="5" checked> Пт</label>
+                    <label><input type="checkbox" class="sch-wd" value="6" checked> Сб</label>
+                    <label><input type="checkbox" class="sch-wd" value="0" checked> Вс</label>
                 </div>
-
-                <button class="btn" style="margin-top: 20px;">Сохранить изменения</button>
+                <div class="sch-form-row">
+                    <label><input type="radio" name="schedMode" value="day" checked> Весь день</label>
+                    <label><input type="radio" name="schedMode" value="hours"> Только часы: с
+                        <select id="schedHourFrom" class="sch-input"></select> до
+                        <select id="schedHourTo" class="sch-input"></select></label>
+                </div>
+                <div class="sch-form-row">
+                    <input type="text" id="schedPeriodReason" class="sch-input sch-wide" maxlength="200" placeholder="Причина (необязательно)">
+                </div>
+                <div class="sch-form-row">
+                    <button class="btn" onclick="schedClosePeriod()">Закрыть период</button>
+                    <button class="btn btn-danger" onclick="schedOpenPeriod()">Открыть период</button>
+                </div>
+                <p class="sch-hint">«Открыть период» снимает все закрытия в выбранных датах. Записи клиентов это не затрагивает.</p>
             </div>
         </div>
     </div>

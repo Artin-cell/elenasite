@@ -6,6 +6,7 @@ function switchTab(event, tabId) {
     document.getElementById(tabId).classList.add('active');
 
     if (tabId === 'bookings' && !bookingsLoaded) loadBookings();
+    if (tabId === 'schedule' && !scheduleLoaded) initSchedule();
 }
 
 // ===== Общие хелперы для работы с API =====
@@ -32,7 +33,10 @@ async function apiFetch(path, options = {}) {
     const data = isJson ? await response.json() : null;
 
     if (!response.ok) {
-        throw new Error((data && data.error) || 'Ошибка запроса');
+        const error = new Error((data && data.error) || 'Ошибка запроса');
+        error.status = response.status;
+        error.data = data;
+        throw error;
     }
 
     return data;
@@ -408,3 +412,315 @@ document.addEventListener('DOMContentLoaded', () => {
     const link = document.querySelector('.admin-logout');
     if (link) link.addEventListener('click', e => { e.preventDefault(); logout(); });
 });
+
+
+// ===== РАСПИСАНИЕ =====
+const SCHED_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+const SCHED_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const SCHED_MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const SCHED_WEEKDAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+const SCHED_DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+let scheduleLoaded = false;
+let schedBusy = false;
+let schedYear = 0;
+let schedMonth = 0;
+let schedSelected = null;
+let schedData = { slots: SCHED_SLOTS, blocks: [], appointments: [] };
+
+function schedPad(n) { return String(n).padStart(2, '0'); }
+function schedKey(y, m0, d) { return `${y}-${schedPad(m0 + 1)}-${schedPad(d)}`; }
+
+function schedTodayKey() {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Yekaterinburg', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const get = type => parts.find(p => p.type === type).value;
+    return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function schedPlural(n) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'запись';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'записи';
+    return 'записей';
+}
+
+function schedEntry(idx, key) {
+    return idx[key] || { fullBlock: null, slotBlocks: {}, booked: {}, appts: [] };
+}
+
+function schedIndex() {
+    const idx = {};
+    const ensure = date => idx[date] || (idx[date] = { fullBlock: null, slotBlocks: {}, booked: {}, appts: [] });
+    schedData.blocks.forEach(b => {
+        const e = ensure(b.date);
+        if (b.slot_time) e.slotBlocks[b.slot_time] = b; else e.fullBlock = b;
+    });
+    schedData.appointments.forEach(a => {
+        const e = ensure(a.date);
+        e.appts.push(a);
+        (a.slots || []).forEach(t => { e.booked[t] = a; });
+    });
+    return idx;
+}
+
+function schedDayInfo(e, slots) {
+    const blocked = new Set(e.fullBlock ? slots : Object.keys(e.slotBlocks));
+    const busy = new Set([...blocked, ...Object.keys(e.booked)]);
+    return {
+        closed: !!e.fullBlock,
+        blockedCount: blocked.size,
+        full: busy.size >= slots.length,
+        apptCount: e.appts.length,
+    };
+}
+
+function initSchedule() {
+    const [y, m] = schedTodayKey().split('-').map(Number);
+    schedYear = y;
+    schedMonth = m - 1;
+    schedSelected = schedTodayKey();
+
+    const hourFrom = document.getElementById('schedHourFrom');
+    const hourTo = document.getElementById('schedHourTo');
+    hourFrom.innerHTML = SCHED_SLOTS.map(t => `<option value="${t}">${t}</option>`).join('');
+    hourTo.innerHTML = SCHED_SLOTS.map(t => {
+        const end = schedPad(Number(t.slice(0, 2)) + 1) + ':00';
+        return `<option value="${end}">${end}</option>`;
+    }).join('');
+    hourTo.value = '20:00';
+    document.getElementById('schedFrom').min = schedTodayKey();
+    document.getElementById('schedTo').min = schedTodayKey();
+
+    loadSchedule();
+}
+
+async function loadSchedule() {
+    const grid = document.getElementById('schedCalendar');
+    try {
+        const data = await apiFetch(`/admin/schedule?month=${schedYear}-${schedPad(schedMonth + 1)}`);
+        schedData = {
+            slots: (data.slots && data.slots.length) ? data.slots : SCHED_SLOTS,
+            blocks: data.blocks || [],
+            appointments: data.appointments || [],
+        };
+        scheduleLoaded = true;
+        renderSchedule();
+    } catch (err) {
+        grid.innerHTML = `<div class="sch-error">Не удалось загрузить расписание: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function renderSchedule() {
+    const slots = schedData.slots;
+    const idx = schedIndex();
+    const today = schedTodayKey();
+
+    document.getElementById('schedMonthTitle').textContent = SCHED_MONTHS[schedMonth] + ' ' + schedYear;
+
+    const offset = (new Date(schedYear, schedMonth, 1).getDay() + 6) % 7;
+    const daysInMonth = new Date(schedYear, schedMonth + 1, 0).getDate();
+
+    let html = SCHED_DAY_NAMES.map(n => `<div class="calendar-day-name">${n}</div>`).join('');
+    for (let i = 0; i < offset; i++) html += '<div class="calendar-day empty"></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const key = schedKey(schedYear, schedMonth, d);
+        const info = schedDayInfo(schedEntry(idx, key), slots);
+        const cls = ['calendar-day', 'sch-day'];
+        if (key < today) cls.push('sch-past');
+        if (key === today) cls.push('sch-today');
+        if (key === schedSelected) cls.push('selected');
+        if (info.closed) cls.push('sch-closed');
+        else if (info.full) cls.push('sch-full');
+        else if (info.blockedCount > 0) cls.push('sch-partial');
+        if (info.apptCount > 0) cls.push('sch-has');
+
+        const notes = [];
+        if (info.closed) notes.push('закрыт');
+        else if (info.blockedCount > 0) notes.push(`закрыто ${info.blockedCount} ч`);
+        if (info.apptCount > 0) notes.push(`${info.apptCount} ${schedPlural(info.apptCount)}`);
+
+        html += `<div class="${cls.join(' ')}" data-date="${key}" onclick="schedSelectDay('${key}')">` +
+            `<span class="sch-num">${d}</span><span class="sch-sub">${notes.join('<br>')}</span></div>`;
+    }
+    document.getElementById('schedCalendar').innerHTML = html;
+    renderScheduleDay(idx);
+}
+
+function renderScheduleDay(idx) {
+    const panel = document.getElementById('schedDayPanel');
+    if (!schedSelected) {
+        panel.innerHTML = '<p class="sch-hint">Выберите день в календаре, чтобы закрыть или открыть часы приёма.</p>';
+        return;
+    }
+    const slots = schedData.slots;
+    const e = schedEntry(idx || schedIndex(), schedSelected);
+    const info = schedDayInfo(e, slots);
+    const past = schedSelected < schedTodayKey();
+    const [y, m, d] = schedSelected.split('-').map(Number);
+    const title = `${d} ${SCHED_MONTHS_GEN[m - 1]}, ${SCHED_WEEKDAYS[new Date(y, m - 1, d).getDay()]}`;
+
+    const cells = slots.map(t => {
+        const booked = e.booked[t];
+        const block = e.fullBlock || e.slotBlocks[t];
+        const cls = ['sch-slot'];
+        const notes = [];
+        if (booked) {
+            cls.push('booked');
+            notes.push(escapeHtml(booked.client_name) + (booked.status === 'pending' ? ' (ждёт оплаты)' : ''));
+        }
+        if (block) {
+            cls.push('blocked');
+            notes.push('закрыто' + (block.reason ? ' · ' + escapeHtml(block.reason) : ''));
+        }
+        if (!booked && !block) { cls.push('free'); notes.push('свободно'); }
+        return `<div class="${cls.join(' ')}" onclick="schedToggleSlot('${schedSelected}', '${t}')">` +
+            `<span class="sch-slot-time">${t}</span><span class="sch-slot-note">${notes.join('<br>')}</span></div>`;
+    }).join('');
+
+    const hasBlocks = info.closed || info.blockedCount > 0;
+    const controls = past
+        ? '<p class="sch-hint">Это прошедший день, расписание менять нельзя.</p>'
+        : `<p class="sch-hint">Нажмите на час, чтобы закрыть или открыть его. Занятые записью часы закрыть нельзя.</p>
+           <div class="sch-form-row">
+               <input type="text" id="schedReason" class="sch-input sch-wide" maxlength="200" placeholder="Причина закрытия (необязательно)">
+               ${info.closed ? '' : '<button class="btn btn-small" onclick="schedCloseDay()">Закрыть весь день</button>'}
+               ${hasBlocks ? '<button class="btn btn-small btn-danger" onclick="schedOpenDay()">Открыть весь день</button>' : ''}
+           </div>`;
+
+    panel.innerHTML = `<h3 class="sch-h3">${title}</h3><div class="sch-slots">${cells}</div>${controls}`;
+}
+
+function schedSelectDay(key) {
+    schedSelected = key;
+    renderSchedule();
+}
+
+async function schedChangeMonth(delta) {
+    const next = new Date(schedYear, schedMonth + delta, 1);
+    schedYear = next.getFullYear();
+    schedMonth = next.getMonth();
+    schedSelected = null;
+    await loadSchedule();
+}
+
+function schedReasonValue() {
+    const input = document.getElementById('schedReason');
+    return input ? input.value.trim() : '';
+}
+
+// Создание закрытий. Если на это время уже есть записи, бэкенд вернёт список, и мы спросим, закрывать ли всё равно.
+async function schedPostBlocks(payload) {
+    try {
+        return await apiFetch('/admin/blocks', { method: 'POST', body: JSON.stringify(payload) });
+    } catch (err) {
+        if (err.status === 409 && err.data && err.data.need_force) {
+            const lines = (err.data.conflicts || []).map(c => `• ${c.when}: ${c.client}`).join('\n');
+            if (!confirm(`${err.data.error}\n\n${lines}\n\nЗакрытие не отменяет эти записи, клиенты придут по записи. Закрыть всё равно?`)) return null;
+            return await apiFetch('/admin/blocks', {
+                method: 'POST',
+                body: JSON.stringify(Object.assign({}, payload, { force: true })),
+            });
+        }
+        throw err;
+    }
+}
+
+async function schedRun(action, errorText) {
+    if (schedBusy) return;
+    schedBusy = true;
+    try {
+        await action();
+    } catch (err) {
+        alert(errorText + ': ' + err.message);
+    } finally {
+        schedBusy = false;
+        await loadSchedule();
+    }
+}
+
+function schedToggleSlot(date, time) {
+    if (schedBusy) return;
+    if (date < schedTodayKey()) { alert('Это прошедший день, расписание менять нельзя.'); return; }
+
+    const e = schedEntry(schedIndex(), date);
+    if (e.fullBlock) {
+        alert('Весь день закрыт. Чтобы открыть отдельные часы, сначала нажмите «Открыть весь день».');
+        return;
+    }
+    const block = e.slotBlocks[time];
+    if (!block && e.booked[time]) {
+        alert('Этот час занят записью. Чтобы освободить его, отмените или перенесите запись на вкладке «Записи клиентов».');
+        return;
+    }
+    return schedRun(async () => {
+        if (block) {
+            await apiFetch('/admin/blocks/' + block.id, { method: 'DELETE' });
+        } else {
+            await schedPostBlocks({ date, slot_times: [time], reason: schedReasonValue() });
+        }
+    }, 'Не удалось изменить расписание');
+}
+
+function schedCloseDay() {
+    if (!schedSelected) return;
+    const date = schedSelected;
+    return schedRun(() => schedPostBlocks({ date, reason: schedReasonValue() }), 'Не удалось закрыть день');
+}
+
+function schedOpenDay() {
+    if (!schedSelected) return;
+    const date = schedSelected;
+    return schedRun(
+        () => apiFetch(`/admin/blocks?from=${date}&to=${date}`, { method: 'DELETE' }),
+        'Не удалось открыть день'
+    );
+}
+
+function schedReadPeriod() {
+    const from = document.getElementById('schedFrom').value;
+    const to = document.getElementById('schedTo').value || from;
+    if (!from) { alert('Укажите дату «с».'); return null; }
+    if (to < from) { alert('Дата «по» раньше даты «с».'); return null; }
+
+    const weekdays = [...document.querySelectorAll('.sch-wd:checked')].map(el => Number(el.value));
+    if (weekdays.length === 0) { alert('Выберите хотя бы один день недели.'); return null; }
+
+    const payload = { from, to, reason: document.getElementById('schedPeriodReason').value.trim() };
+    if (weekdays.length < 7) payload.weekdays = weekdays;
+
+    const mode = document.querySelector('input[name="schedMode"]:checked').value;
+    if (mode === 'hours') {
+        const hourFrom = document.getElementById('schedHourFrom').value;
+        const hourTo = document.getElementById('schedHourTo').value;
+        const times = SCHED_SLOTS.filter(t => t >= hourFrom && t < hourTo);
+        if (times.length === 0) { alert('Время «до» должно быть позже времени «с».'); return null; }
+        if (times.length < SCHED_SLOTS.length) payload.slot_times = times;
+    }
+    return payload;
+}
+
+function schedClosePeriod() {
+    const payload = schedReadPeriod();
+    if (!payload) return;
+    return schedRun(async () => {
+        const res = await schedPostBlocks(payload);
+        if (res) {
+            alert(`Закрыто: ${res.created}` + (res.skipped ? `. Уже было закрыто: ${res.skipped}.` : '.'));
+        }
+    }, 'Не удалось закрыть период');
+}
+
+function schedOpenPeriod() {
+    const from = document.getElementById('schedFrom').value;
+    const to = document.getElementById('schedTo').value || from;
+    if (!from) { alert('Укажите дату «с».'); return; }
+    if (to < from) { alert('Дата «по» раньше даты «с».'); return; }
+    if (!confirm(`Открыть всё, что закрыто с ${from} по ${to}? Записи клиентов это не затронет.`)) return;
+    return schedRun(async () => {
+        const res = await apiFetch(`/admin/blocks?from=${from}&to=${to}`, { method: 'DELETE' });
+        alert(`Открыто закрытий: ${res.deleted}.`);
+    }, 'Не удалось открыть период');
+}

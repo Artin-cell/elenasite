@@ -127,8 +127,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		protected.DELETE("/services/:id", h.AdminDeleteService)
 
 		protected.GET("/blocks", h.AdminListBlocks)
-		protected.POST("/blocks", h.AdminCreateBlock)
+		protected.GET("/schedule", h.AdminSchedule)
+		protected.POST("/blocks", h.AdminCreateBlocks)
 		protected.DELETE("/blocks/:id", h.AdminDeleteBlock)
+		protected.DELETE("/blocks", h.AdminDeleteBlocksRange)
 
 		protected.GET("/news", h.AdminListNews)
 		protected.POST("/news", h.AdminCreateNews)
@@ -236,6 +238,10 @@ func (h *Handler) GetAvailability(c *gin.Context) {
 		} else {
 			result[dateKey] = append(result[dateKey], *b.SlotTime)
 		}
+	}
+
+	for key, times := range result {
+		result[key] = uniqueSorted(times)
 	}
 
 	c.JSON(http.StatusOK, result)
