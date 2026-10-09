@@ -119,6 +119,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		protected.DELETE("/appointments/:id", h.AdminDeleteAppointment)
 		protected.PATCH("/appointments/:id/reschedule", h.AdminReschedule)
 		protected.PATCH("/appointments/:id/status", h.AdminUpdateStatus)
+		protected.POST("/appointments/:id/cancel", h.AdminCancelAppointment)
+		protected.POST("/appointments/:id/mark-paid", h.AdminMarkPaid)
 
 		protected.POST("/services", h.AdminCreateService)
 		protected.PUT("/services/:id", h.AdminUpdateService)

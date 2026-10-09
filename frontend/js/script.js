@@ -179,7 +179,7 @@ async function confirmFinalB() {
   const lastName = nameParts.slice(1).join(' ') || firstName;
 
   const [hh, mm] = selectedTimeStr.split(':').map(Number);
-  const startsAtISO = new Date(selDay.y, selDay.m, selDay.d, hh, mm, 0).toISOString();
+  const startsAtISO = toCalendarISO(selDay.y, selDay.m + 1, selDay.d, hh, mm);
 
   const btn = document.getElementById('confirmBtn');
   btn.disabled = true;
@@ -653,4 +653,11 @@ function closeDevModal(event) {
     document.getElementById('dev-modal').classList.remove('active');
     document.body.style.overflow = 'auto';
   }
+}
+
+// Время записи привязано к часовому поясу кабинета (Asia/Yekaterinburg, +05:00),
+// а не к часовому поясу браузера. Бэкенд принимает только RFC3339 со смещением +05:00.
+function toCalendarISO(year, month1, day, hh, mm) {
+    const p = n => String(n).padStart(2, '0');
+    return `${year}-${p(month1)}-${p(day)}T${p(hh)}:${p(mm)}:00+05:00`;
 }
