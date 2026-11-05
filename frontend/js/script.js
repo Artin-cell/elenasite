@@ -637,6 +637,17 @@ function closeDoc7Modal(event) {
   }
 }
 
+function openDoc8Modal() {
+  document.getElementById('doc8-modal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDoc8Modal(event) {
+  if (!event || event.target.id === 'back' || event.target.classList.contains('s-modal-close') || event.target.classList.contains('s-modal-btn')) {
+    document.getElementById('doc8-modal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+}
 
 
 
