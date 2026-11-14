@@ -27,12 +27,8 @@ const colorBg = "#FAF8F4"
 const colorText = "#2B2B2B"
 const colorTextMuted = "#6A6A6A"
 
-// calendarButton: кнопка «Добавить в календарь».
-// Ведёт на ekosta.ru/calendar/ — страницу-роутер, которая определяет устройство:
-//
-//	Apple  → webcal:// (системный Календарь, без скачивания файла)
-//	Прочие → Google Календарь (форма сразу открывается в браузере)
-func calendarButton(d time.Time, durationMin int, title, location, description, icsURL string) string {
+// calendarButton: кнопка «Добавить в Google Календарь». Открывает форму события сразу в Google Календаре.
+func calendarButton(d time.Time, durationMin int, title, location, description, _ string) string {
 	if d.IsZero() {
 		return ""
 	}
@@ -40,15 +36,14 @@ func calendarButton(d time.Time, durationMin int, title, location, description, 
 		durationMin = 60
 	}
 	end := d.Add(time.Duration(durationMin) * time.Minute)
+	utc := func(t time.Time) string { return t.UTC().Format("20060102T150405Z") }
 	q := url.Values{}
-	q.Set("start", d.UTC().Format(time.RFC3339))
-	q.Set("end", end.UTC().Format(time.RFC3339))
-	q.Set("title", title)
+	q.Set("action", "TEMPLATE")
+	q.Set("text", title)
+	q.Set("dates", utc(d)+"/"+utc(end))
+	q.Set("details", description)
 	q.Set("location", location)
-	q.Set("description", description)
-	q.Set("ics", icsURL)
-	router := "https://ekosta.ru/calendar/?" + q.Encode()
-	return emailButton(router, "Добавить в календарь")
+	return emailButton("https://calendar.google.com/calendar/render?"+q.Encode(), "Добавить в Google Календарь")
 }
 
 // rubles: сумма в копейках как «6 000» или «6 000,50».
