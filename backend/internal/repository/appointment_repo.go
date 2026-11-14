@@ -4,6 +4,7 @@ import (
 	"context"
 	"elena-backend/internal/models"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,9 @@ import (
 )
 
 var ErrInvalidStatusTransition = fmt.Errorf("недопустимый переход статуса записи")
+
+// likeEscaper экранирует спецсимволы шаблона ILIKE (экранирующий символ по умолчанию: обратная косая черта).
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 type AppointmentRepo struct {
 	db *sqlx.DB
@@ -137,6 +141,12 @@ func (r *AppointmentRepo) List(ctx context.Context, opts ListAppointmentsOpts) (
 		args = append(args, opts.To)
 		i++
 	}
+	if opts.Search != "" {
+		like := "%" + likeEscaper.Replace(opts.Search) + "%"
+		q += fmt.Sprintf(" and (c.first_name ilike $%d or c.last_name ilike $%[1]d or c.phone ilike $%[1]d or c.email ilike $%[1]d)", i)
+		args = append(args, like)
+		i++
+	}
 	if opts.ClientID != uuid.Nil {
 		q += fmt.Sprintf(" and a.client_id = $%d", i)
 		args = append(args, opts.ClientID)
@@ -180,8 +190,52 @@ type ListAppointmentsOpts struct {
 	From     time.Time
 	To       time.Time
 	ClientID uuid.UUID
+	Search   string // поиск по имени, телефону, email клиента
 	Limit    int
 	Offset   int
+}
+
+// Count возвращает общее количество записей с учётом фильтров (без limit/offset).
+func (r *AppointmentRepo) Count(ctx context.Context, opts ListAppointmentsOpts) (int, error) {
+	q := `
+		select count(*)
+		from appointments a
+		join clients c on c.id = a.client_id
+		where 1=1
+	`
+	args := []any{}
+	i := 1
+
+	if opts.Status != "" {
+		q += fmt.Sprintf(" and a.status = $%d", i)
+		args = append(args, opts.Status)
+		i++
+	}
+	if !opts.From.IsZero() {
+		q += fmt.Sprintf(" and a.starts_at >= $%d", i)
+		args = append(args, opts.From)
+		i++
+	}
+	if !opts.To.IsZero() {
+		q += fmt.Sprintf(" and a.starts_at <= $%d", i)
+		args = append(args, opts.To)
+		i++
+	}
+	if opts.Search != "" {
+		like := "%" + likeEscaper.Replace(opts.Search) + "%"
+		q += fmt.Sprintf(" and (c.first_name ilike $%d or c.last_name ilike $%[1]d or c.phone ilike $%[1]d or c.email ilike $%[1]d)", i)
+		args = append(args, like)
+		i++
+	}
+	if opts.ClientID != uuid.Nil {
+		q += fmt.Sprintf(" and a.client_id = $%d", i)
+		args = append(args, opts.ClientID)
+		i++
+	}
+
+	var n int
+	err := r.db.GetContext(ctx, &n, q, args...)
+	return n, err
 }
 
 func (r *AppointmentRepo) ConfirmPendingPayment(ctx context.Context, id uuid.UUID) (bool, error) {

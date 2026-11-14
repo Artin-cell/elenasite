@@ -264,6 +264,22 @@
             <div class="section-header">
                 <h1 class="section-title">Управление записями клиентов</h1>
                 <p class="section-subtitle">Просматривайте и управляйте всеми заявками на консультацию</p>
+            <div class="bk-filters">
+                <input type="search" id="bkSearch" class="form-input bk-search" maxlength="100"
+                    placeholder="Поиск: имя, телефон или email" oninput="bkOnSearchInput()">
+                <select id="bkStatus" class="form-select" onchange="bkApplyFilters()">
+                    <option value="">Все статусы</option>
+                    <option value="pending">Ожидает оплаты</option>
+                    <option value="confirmed">Подтверждено</option>
+                    <option value="completed">Завершено</option>
+                    <option value="cancelled">Отменено</option>
+                    <option value="no_show">Клиент не пришёл</option>
+                </select>
+                <label class="bk-label">С <input type="date" id="bkFrom" class="form-input" onchange="bkApplyFilters()"></label>
+                <label class="bk-label">По <input type="date" id="bkTo" class="form-input" onchange="bkApplyFilters()"></label>
+                <button class="btn btn-small" onclick="bkResetFilters()">Сбросить</button>
+            </div>
+            <div class="bk-summary" id="bkSummary"></div>
                             <div class="table-responsive">
                 <table class="admin-table">
                     <thead>
@@ -271,9 +287,7 @@
                             <th>Клиент</th>
                             <th>Услуга</th>
                             <th>Дата и время</th>
-                            <th>Статус</th>
-                            <th>Оплата</th>
-                            <th>Создано</th>
+                            <th>Статус и оплата</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
@@ -282,6 +296,7 @@
                     </tbody>
                 </table>
             </div>
+            <div class="bk-pager" id="bkPager"></div>
             </div>
             <button class="btn" style="margin-bottom: 20px;" onclick="toggleManualBookingForm()">+ Добавить запись вручную</button>
 
