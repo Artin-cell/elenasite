@@ -291,12 +291,25 @@ const BK_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00',
 let bkAvailCache = {};
 let bkRescheduleAppt = null;
 let bkRescheduleSelected = null;
+let bkRsKeyHandler = null;
+let bkRsOverlay = null;
+
+// Дата и время в часовом поясе кабинета (Asia/Yekaterinburg), а не браузера и не UTC
+function bkYektParts(iso) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Yekaterinburg', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(new Date(iso));
+    const g = t => parts.find(x => x.type === t).value;
+    return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` };
+}
 
 async function rescheduleBooking(id) {
     const appt = bookingsById[id];
     if (!appt) { loadBookings(); return; }
     bkRescheduleAppt = appt;
     bkRescheduleSelected = null;
+    bkAvailCache = {}; // свежая занятость при каждом открытии окна
     openRescheduleModal();
 }
 
@@ -335,20 +348,19 @@ function openRescheduleModal() {
         <div class="bk-rs-error" id="bkRsError"></div>
     `;
 
-    function close() { document.removeEventListener('keydown', onKey); overlay.remove(); bkRescheduleAppt = null; }
-    function onKey(e) { if (e.key === 'Escape') close(); }
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-    document.addEventListener('keydown', onKey);
+    bkRsKeyHandler = e => { if (e.key === 'Escape') bkRescheduleClose(); };
+    overlay.addEventListener('click', e => { if (e.target === overlay) bkRescheduleClose(); });
+    document.addEventListener('keydown', bkRsKeyHandler);
+    bkRsOverlay = overlay;
 
     overlay.appendChild(card);
     document.body.appendChild(overlay);
 
     const dateInput = document.getElementById('bkRsDate');
-    // По умолчанию — через неделю от текущей записи
-    const defaultDate = new Date(appt.starts_at);
-    defaultDate.setDate(defaultDate.getDate() + 7);
-    const dp = n => String(n).padStart(2, '0');
-    dateInput.value = `${defaultDate.getFullYear()}-${dp(defaultDate.getMonth() + 1)}-${dp(defaultDate.getDate())}`;
+    // По умолчанию: день текущей записи, если он ещё не прошёл, иначе сегодня
+    const curDay = bkYektParts(appt.starts_at).date;
+    const today = schedTodayKey();
+    dateInput.value = curDay > today ? curDay : today;
     dateInput.addEventListener('change', () => bkLoadSlotsForDate(dateInput.value));
 
     bkLoadSlotsForDate(dateInput.value);
@@ -356,11 +368,10 @@ function openRescheduleModal() {
 }
 
 function bkRescheduleClose() {
-    const overlay = document.querySelector('.bk-modal');
-    if (overlay) {
-        document.removeEventListener('keydown', () => {});
-        overlay.remove();
-    }
+    if (bkRsKeyHandler) document.removeEventListener('keydown', bkRsKeyHandler);
+    bkRsKeyHandler = null;
+    if (bkRsOverlay) bkRsOverlay.remove();
+    bkRsOverlay = null;
     bkRescheduleAppt = null;
     bkRescheduleSelected = null;
 }
@@ -385,14 +396,20 @@ async function bkLoadSlotsForDate(dateStr) {
         }
     }
 
-    const dayBusy = busy[dateStr] || [];
-    const busySet = new Set(dayBusy);
     const appt = bkRescheduleAppt;
+    if (!appt || !document.getElementById('bkRsSlots')) return; // окно уже закрыто
     const durationMin = Math.round((new Date(appt.ends_at) - new Date(appt.starts_at)) / 60000);
-
-    // Текущая дата/время записи (чтобы пометить её отдельно)
-    const curDate = appt.starts_at.slice(0, 10);
-    const curTime = appt.starts_at.slice(11, 16);
+    const cur = bkYektParts(appt.starts_at);
+    const curDate = cur.date;
+    const curTime = cur.time;
+    const busySet = new Set(busy[dateStr] || []);
+    // Часы самой переносимой записи не считаем занятыми
+    if (dateStr === curDate) {
+        const startH = parseInt(curTime.slice(0, 2), 10);
+        for (let hh = startH; hh * 60 < startH * 60 + durationMin; hh++) {
+            busySet.delete(String(hh).padStart(2, '0') + ':00');
+        }
+    }
 
     const now = new Date();
     const yektParts = new Intl.DateTimeFormat('en-US', {
