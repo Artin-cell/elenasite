@@ -75,17 +75,115 @@ let bookingsLoaded = false;
 let bookingsById = {};
 let bookingActionBusy = false;
 
+const BK_PAGE_SIZE = 50;
+let bkPage = 0;
+let bkTotal = 0;
+let bkFiltersInited = false;
+let bkSearchTimer = null;
+let bkLoadSeq = 0;
+
+function bkInitFilters() {
+    if (bkFiltersInited) return;
+    bkFiltersInited = true;
+    // По умолчанию: с сегодняшнего дня по Екатеринбургу (ближайшие записи сверху)
+    document.getElementById('bkFrom').value = schedTodayKey();
+}
+
+function bkFilterValues() {
+    return {
+        search: (document.getElementById('bkSearch').value || '').trim(),
+        status: document.getElementById('bkStatus').value,
+        from:   document.getElementById('bkFrom').value,
+        to:     document.getElementById('bkTo').value,
+    };
+}
+
+function bkHasFilters() {
+    const f = bkFilterValues();
+    return !!(f.search || f.status || f.to || (f.from && f.from !== schedTodayKey()));
+}
+
 async function loadBookings() {
+    bkInitFilters();
     const tbody = document.getElementById('bookingsTableBody');
+    const seq = ++bkLoadSeq;
+    const f = bkFilterValues();
+
+    if (f.from && f.to && f.to < f.from) {
+        bkTotal = 0;
+        tbody.innerHTML = '<tr><td colspan="6">Дата «по» не может быть раньше даты «с».</td></tr>';
+        document.getElementById('bkPager').innerHTML = '';
+        document.getElementById('bkSummary').textContent = '';
+        return;
+    }
+
     tbody.innerHTML = '<tr><td colspan="6">Загрузка…</td></tr>';
+    const params = new URLSearchParams({ limit: BK_PAGE_SIZE, offset: bkPage * BK_PAGE_SIZE });
+    if (f.search) params.set('search', f.search);
+    if (f.status) params.set('status', f.status);
+    if (f.from)   params.set('from', f.from);
+    if (f.to)     params.set('to', f.to);
 
     try {
-        const list = await apiFetch('/admin/appointments?limit=200');
+        const data = await apiFetch('/admin/appointments?' + params.toString());
+        if (seq !== bkLoadSeq) return;
         bookingsLoaded = true;
-        renderBookings(list || []);
+        bkTotal = (data && data.total != null) ? data.total : 0;
+        const items = (data && data.items) ? data.items : [];
+        // Страница опустела (после удаления/отмены): переходим на последнюю непустую
+        if (items.length === 0 && bkPage > 0 && bkTotal > 0) {
+            bkPage = Math.max(0, Math.ceil(bkTotal / BK_PAGE_SIZE) - 1);
+            return loadBookings();
+        }
+        renderBookings(items);
+        bkRenderPager();
     } catch (err) {
+        if (seq !== bkLoadSeq) return;
         tbody.innerHTML = `<tr><td colspan="6">Не удалось загрузить записи: ${escapeHtml(err.message)}</td></tr>`;
     }
+}
+
+function bkRenderPager() {
+    const summary = document.getElementById('bkSummary');
+    const pager   = document.getElementById('bkPager');
+    if (bkTotal === 0) { summary.textContent = ''; pager.innerHTML = ''; return; }
+    const pages = Math.ceil(bkTotal / BK_PAGE_SIZE);
+    const first = bkPage * BK_PAGE_SIZE + 1;
+    const last  = Math.min(bkTotal, first + BK_PAGE_SIZE - 1);
+    summary.textContent = `Найдено: ${bkTotal} ${schedPlural(bkTotal)}` +
+        (pages > 1 ? ` · показаны ${first}–${last}` : '');
+    if (pages <= 1) { pager.innerHTML = ''; return; }
+    pager.innerHTML =
+        `<button class="btn btn-small" onclick="bkGoPage(${bkPage - 1})" ${bkPage === 0 ? 'disabled' : ''}>← Назад</button>` +
+        `<span class="bk-page-info">Страница ${bkPage + 1} из ${pages}</span>` +
+        `<button class="btn btn-small" onclick="bkGoPage(${bkPage + 1})" ${bkPage >= pages - 1 ? 'disabled' : ''}>Вперёд →</button>`;
+}
+
+function bkGoPage(n) {
+    const pages = Math.ceil(bkTotal / BK_PAGE_SIZE);
+    if (n < 0 || n >= pages) return;
+    bkPage = n;
+    loadBookings();
+    document.getElementById('bookings').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function bkApplyFilters() {
+    clearTimeout(bkSearchTimer);
+    bkPage = 0;
+    loadBookings();
+}
+
+function bkOnSearchInput() {
+    clearTimeout(bkSearchTimer);
+    bkSearchTimer = setTimeout(bkApplyFilters, 400);
+}
+
+function bkResetFilters() {
+    document.getElementById('bkSearch').value  = '';
+    document.getElementById('bkStatus').value  = '';
+    document.getElementById('bkFrom').value    = schedTodayKey();
+    document.getElementById('bkTo').value      = '';
+    bkApplyFilters();
 }
 
 function renderBookings(list) {
@@ -94,7 +192,7 @@ function renderBookings(list) {
     list.forEach(a => { bookingsById[a.id] = a; });
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">Пока нет ни одной записи</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6">${bkHasFilters() ? 'По выбранным условиям записей нет.' : 'Пока нет ни одной записи.'}</td></tr>`;
         return;
     }
 
