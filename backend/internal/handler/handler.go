@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -489,36 +490,90 @@ func (h *Handler) AdminCreateClient(c *gin.Context) {
 }
 
 func (h *Handler) AdminListAppointments(c *gin.Context) {
+	loc, _ := time.LoadLocation("Asia/Yekaterinburg")
+	if loc == nil {
+		loc = time.FixedZone("YEKT", 5*3600)
+	}
+
 	opts := repository.ListAppointmentsOpts{
 		Limit:  50,
 		Offset: 0,
 	}
+
 	if s := c.Query("status"); s != "" {
-		opts.Status = models.AppointmentStatus(s)
+		switch models.AppointmentStatus(s) {
+		case models.StatusPending, models.StatusConfirmed, models.StatusCancelled,
+			models.StatusCompleted, models.StatusNoShow:
+			opts.Status = models.AppointmentStatus(s)
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "неверный статус"})
+			return
+		}
 	}
-	if c.Query("limit") != "" {
-		l, err := strconv.Atoi(c.Query("limit"))
+
+	if raw := c.Query("from"); raw != "" {
+		t, err := time.ParseInLocation("2006-01-02", raw, loc)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат from, ожидается YYYY-MM-DD"})
+			return
+		}
+		opts.From = t
+	}
+	if raw := c.Query("to"); raw != "" {
+		t, err := time.ParseInLocation("2006-01-02", raw, loc)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат to, ожидается YYYY-MM-DD"})
+			return
+		}
+		opts.To = t.Add(24*time.Hour - time.Second) // включаем последний день целиком
+	}
+
+	if q := strings.TrimSpace(c.Query("search")); q != "" {
+		if utf8.RuneCountInString(q) > 100 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "поисковый запрос слишком длинный"})
+			return
+		}
+		opts.Search = q
+	}
+
+	if raw := c.Query("limit"); raw != "" {
+		l, err := strconv.Atoi(raw)
 		if err != nil || l < 1 || l > 200 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "limit must be between 1 and 200"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "limit должен быть от 1 до 200"})
 			return
 		}
 		opts.Limit = l
 	}
-	if c.Query("offset") != "" {
-		o, err := strconv.Atoi(c.Query("offset"))
+	if raw := c.Query("offset"); raw != "" {
+		o, err := strconv.Atoi(raw)
 		if err != nil || o < 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "offset must be >= 0"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "offset должен быть >= 0"})
 			return
 		}
 		opts.Offset = o
 	}
 
-	list, err := h.apptRepo.List(c.Request.Context(), opts)
+	total, err := h.apptRepo.Count(c.Request.Context(), opts)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		log.Printf("admin list appointments count: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить записи"})
 		return
 	}
-	c.JSON(http.StatusOK, list)
+
+	list, err := h.apptRepo.List(c.Request.Context(), opts)
+	if err != nil {
+		log.Printf("admin list appointments list: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить записи"})
+		return
+	}
+	if list == nil {
+		list = []models.Appointment{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"total": total,
+		"items": list,
+	})
 }
 
 func (h *Handler) AdminDeleteAppointment(c *gin.Context) {
