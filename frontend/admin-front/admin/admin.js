@@ -6,6 +6,7 @@ function switchTab(event, tabId) {
     document.getElementById(tabId).classList.add('active');
 
     if (tabId === 'bookings' && !bookingsLoaded) loadBookings();
+    else if (tabId === 'bookings') bkAutoRefresh();
     if (tabId === 'schedule' && !scheduleLoaded) initSchedule();
 }
 
@@ -103,7 +104,8 @@ function bkHasFilters() {
     return !!(f.search || f.status || f.to || (f.from && f.from !== schedTodayKey()));
 }
 
-async function loadBookings() {
+async function loadBookings(opts = {}) {
+    const silent = !!opts.silent;
     bkInitFilters();
     const tbody = document.getElementById('bookingsTableBody');
     const seq = ++bkLoadSeq;
@@ -117,7 +119,7 @@ async function loadBookings() {
         return;
     }
 
-    tbody.innerHTML = '<tr><td colspan="6">Загрузка…</td></tr>';
+    if (!silent) tbody.innerHTML = '<tr><td colspan="6">Загрузка…</td></tr>';
     const params = new URLSearchParams({ limit: BK_PAGE_SIZE, offset: bkPage * BK_PAGE_SIZE });
     if (f.search) params.set('search', f.search);
     if (f.status) params.set('status', f.status);
@@ -133,12 +135,22 @@ async function loadBookings() {
         // Страница опустела (после удаления/отмены): переходим на последнюю непустую
         if (items.length === 0 && bkPage > 0 && bkTotal > 0) {
             bkPage = Math.max(0, Math.ceil(bkTotal / BK_PAGE_SIZE) - 1);
-            return loadBookings();
+            return loadBookings(opts);
         }
-        renderBookings(items);
+        const json = JSON.stringify(items);
+        // Тихое обновление перерисовывает таблицу, только если данные изменились
+        if (!silent || opts.force || json !== bkLastJson) {
+            renderBookings(items);
+            bkLastJson = json;
+        }
         bkRenderPager();
+        bkMarkUpdated();
     } catch (err) {
         if (seq !== bkLoadSeq) return;
+        if (silent) {
+            if (opts.force) alert('Не удалось обновить список: ' + err.message);
+            return; // тихое обновление не трогает таблицу при ошибке
+        }
         tbody.innerHTML = `<tr><td colspan="6">Не удалось загрузить записи: ${escapeHtml(err.message)}</td></tr>`;
     }
 }
@@ -169,6 +181,7 @@ function bkGoPage(n) {
 
 function bkApplyFilters() {
     clearTimeout(bkSearchTimer);
+    bkSearchTimer = null;
     bkPage = 0;
     loadBookings();
 }
@@ -428,6 +441,7 @@ function askRefundChoice(appt) {
         const { datePart, timePart } = formatDateTime(appt.starts_at);
 
         const overlay = document.createElement('div');
+        overlay.className = 'bk-modal';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;';
 
         const card = document.createElement('div');
@@ -997,3 +1011,55 @@ async function svcDelete(id) {
         svcBusy = false;
     }
 }
+
+
+// ===== ЗАПИСИ: кнопка «Обновить» и тихое автообновление =====
+const BK_AUTO_REFRESH_MS = 60 * 1000;
+let bkLastJson = '';
+let bkUpdatedAt = 0;
+let bkRefreshing = false;
+
+function bkMarkUpdated() {
+    bkUpdatedAt = Date.now();
+    const el = document.getElementById('bkUpdated');
+    if (el) el.textContent = 'Обновлено в ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function bkRefresh() {
+    if (bkRefreshing) return;
+    bkRefreshing = true;
+    const btn = document.getElementById('bkRefreshBtn');
+    if (btn) btn.disabled = true;
+    try {
+        await loadBookings({ silent: true, force: true });
+    } finally {
+        bkRefreshing = false;
+        if (btn) btn.disabled = false;
+    }
+}
+
+// Не обновляем, если вкладка скрыта, открыто окно, идёт действие или набирается поиск
+function bkCanAutoRefresh() {
+    return bookingsLoaded
+        && !document.hidden
+        && document.getElementById('bookings').classList.contains('active')
+        && !bookingActionBusy
+        && !bkRefreshing
+        && !bkSearchTimer
+        && !document.querySelector('.bk-modal');
+}
+
+async function bkAutoRefresh() {
+    if (!bkCanAutoRefresh()) return;
+    bkRefreshing = true;
+    try {
+        await loadBookings({ silent: true });
+    } finally {
+        bkRefreshing = false;
+    }
+}
+
+setInterval(bkAutoRefresh, BK_AUTO_REFRESH_MS);
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - bkUpdatedAt > BK_AUTO_REFRESH_MS) bkAutoRefresh();
+});
