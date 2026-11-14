@@ -4,6 +4,7 @@ import (
 	"elena-backend/internal/config"
 	"fmt"
 	"html"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -26,13 +27,28 @@ const colorBg = "#FAF8F4"
 const colorText = "#2B2B2B"
 const colorTextMuted = "#6A6A6A"
 
-// calendarButton: кнопка «Добавить в календарь». Ведёт на .ics по https:
-// iPhone открывает его в «Календаре», Android и компьютер — в приложении календаря.
-func calendarButton(icsURL string) string {
-	if icsURL == "" {
+// calendarButton: кнопка «Добавить в календарь».
+// Ведёт на ekosta.ru/calendar/ — страницу-роутер, которая определяет устройство:
+//
+//	Apple  → webcal:// (системный Календарь, без скачивания файла)
+//	Прочие → Google Календарь (форма сразу открывается в браузере)
+func calendarButton(d time.Time, durationMin int, title, location, description, icsURL string) string {
+	if d.IsZero() {
 		return ""
 	}
-	return emailButton(icsURL, "Добавить в календарь")
+	if durationMin <= 0 {
+		durationMin = 60
+	}
+	end := d.Add(time.Duration(durationMin) * time.Minute)
+	q := url.Values{}
+	q.Set("start", d.UTC().Format(time.RFC3339))
+	q.Set("end", end.UTC().Format(time.RFC3339))
+	q.Set("title", title)
+	q.Set("location", location)
+	q.Set("description", description)
+	q.Set("ics", icsURL)
+	router := "https://ekosta.ru/calendar/?" + q.Encode()
+	return emailButton(router, "Добавить в календарь")
 }
 
 // rubles: сумма в копейках как «6 000» или «6 000,50».
@@ -140,7 +156,11 @@ func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
 		d.FirstName, date, d.CancelURL,
 	)
 
-	calBtns := calendarButton(d.ICalURL)
+	location := "г. Екатеринбург, ул. Уральских рабочих 67"
+	if d.IsOnline {
+		location = "Онлайн"
+	}
+	calBtns := calendarButton(d.AppointmentDate, d.DurationMin, "Психолог", location, d.ServiceTitle, d.ICalURL)
 
 	body := fmt.Sprintf(`
 		<div style="font-family:%s; font-size:20px; font-weight:600; color:%s; margin-bottom:16px;">Вы записаны на приём</div>
@@ -191,7 +211,11 @@ func (m *Mailer) SendRescheduleNotice(to string, d RescheduleData) error {
 		d.FirstName, oldDate, newDate, d.CancelURL,
 	)
 
-	calBtnsR := calendarButton(d.ICalURL)
+	locationR := "г. Екатеринбург, ул. Уральских рабочих 67"
+	if d.IsOnline {
+		locationR = "Онлайн"
+	}
+	calBtnsR := calendarButton(d.NewDate, d.DurationMin, "Психолог", locationR, d.ServiceTitle, d.ICalURL)
 
 	body := fmt.Sprintf(`
 		<div style="font-family:%s; font-size:20px; font-weight:600; color:%s; margin-bottom:16px;">Запись перенесена</div>

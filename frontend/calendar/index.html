@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Добавить в календарь — Елена Костарева</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #FAF8F4; color: #2B2B2B; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card { max-width: 420px; width: 90%; background: #fff; border-radius: 12px; padding: 32px 24px; box-shadow: 0 2px 16px rgba(0,0,0,.08); text-align: center; }
+  .logo { font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: #385C8E; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #6A6A6A; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 24px; }
+  .title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .info { font-size: 14px; color: #6A6A6A; line-height: 1.6; margin-bottom: 24px; }
+  .btn { display: inline-block; width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; margin-bottom: 10px; text-decoration: none; }
+  .btn-primary { background: #385C8E; color: #fff; }
+  .btn-primary:hover { background: #2c4a72; }
+  .btn-secondary { background: #f0f0f0; color: #333; }
+  .btn-secondary:hover { background: #e4e4e4; }
+  .hint { font-size: 12px; color: #9A9A9A; margin-top: 16px; line-height: 1.5; }
+  #fallback { display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Елена Костарева</div>
+  <div class="subtitle">Психолог · Коуч</div>
+  <div class="title" id="eventTitle">Приём у психолога</div>
+  <div class="info" id="eventInfo"></div>
+
+  <a class="btn btn-primary" id="btnMain" href="#">Открыть календарь</a>
+  <div id="fallback">
+    <a class="btn btn-secondary" id="btnGoogle" href="#">Google Календарь</a>
+  </div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<script>
+(function() {
+  var params = new URLSearchParams(location.search);
+  var start = params.get('start') || '';
+  var end   = params.get('end')   || '';
+  var title = params.get('title') || 'Психолог';
+  var location = params.get('location') || '';
+  var description = params.get('description') || '';
+  var ics = params.get('ics') || '';
+
+  // Показываем информацию о событии
+  var infoParts = [];
+  if (start) {
+    try {
+      var d = new Date(start);
+      infoParts.push(d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) +
+        ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+    } catch(e) {}
+  }
+  if (location) infoParts.push(location);
+  document.getElementById('eventInfo').textContent = infoParts.join(' · ');
+
+  // Формируем Google Calendar URL
+  function googleUrl() {
+    function gcalFmt(t) {
+      var d = new Date(t);
+      return d.getUTCFullYear() +
+        String(d.getUTCMonth() + 1).padStart(2, '0') +
+        String(d.getUTCDate()).padStart(2, '0') + 'T' +
+        String(d.getUTCHours()).padStart(2, '0') +
+        String(d.getUTCMinutes()).padStart(2, '0') + '00Z';
+    }
+    var s = gcalFmt(start);
+    var e = end ? gcalFmt(end) : gcalFmt(new Date(new Date(start).getTime() + 3600000));
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent(title) +
+      '&dates=' + s + '/' + e +
+      '&details=' + encodeURIComponent(description) +
+      '&location=' + encodeURIComponent(location);
+  }
+
+  // webcal:// ссылка — открывает системный календарь на Apple без скачивания файла
+  function webcalUrl() {
+    if (!ics) return '';
+    return ics.replace(/^https?:\/\//, 'webcal://');
+  }
+
+  var ua = navigator.userAgent;
+  var isApple = /iPhone|iPad|iPod|Macintosh/i.test(ua) && !/Android/i.test(ua);
+  var isAndroid = /Android/i.test(ua);
+
+  var btnMain = document.getElementById('btnMain');
+  var fallback = document.getElementById('fallback');
+  var hint = document.getElementById('hint');
+
+  if (isApple && webcalUrl()) {
+    // Apple: webcal:// открывает Календарь напрямую, без скачивания
+    btnMain.href = webcalUrl();
+    hint.textContent = 'Нажмите, чтобы добавить событие в Календарь.';
+  } else {
+    // Android и остальные: сразу Google Календарь
+    btnMain.href = googleUrl();
+    btnMain.textContent = 'Открыть Google Календарь';
+    hint.textContent = 'Событие откроется в Google Календаре. Нажмите «Сохранить».';
+  }
+
+  // Запасная кнопка Google для Apple
+  if (isApple) {
+    fallback.style.display = 'block';
+    document.getElementById('btnGoogle').href = googleUrl();
+  }
+
+  // Автоперенаправление через 1.5 секунды
+  setTimeout(function() {
+    if (isApple && webcalUrl()) {
+      window.location.href = webcalUrl();
+    } else {
+      window.location.href = googleUrl();
+    }
+  }, 1500);
+
+})();
+</script>
+</body>
+</html>
