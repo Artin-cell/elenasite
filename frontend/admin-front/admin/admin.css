@@ -581,3 +581,19 @@
 .bk-page-info { font-size: 14px; }
 .bk-summary-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .bk-updated { font-size: 12px; color: var(--text-muted); }
+
+/* ===== Перенос записи ===== */
+.bk-rs-title { font-family: var(--font-serif); font-size: 20px; color: var(--primary); margin-bottom: 16px; }
+.bk-rs-info { font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: var(--text-muted); }
+.bk-rs-slots-label { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+.bk-rs-tz { font-size: 12px; color: var(--text-muted); font-weight: normal; }
+.bk-rs-slots { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; min-height: 40px; }
+.bk-rs-hint { font-size: 14px; color: var(--text-muted); }
+.bk-slot { padding: 8px 14px; border: 1px solid var(--border, #ddd); border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; transition: all .15s; }
+.bk-slot:hover:not(:disabled) { border-color: var(--primary, #6b4e9a); }
+.bk-slot.bk-slot-selected { background: var(--primary, #6b4e9a); color: #fff; border-color: var(--primary, #6b4e9a); }
+.bk-slot.bk-slot-busy { background: #f5f5f5; color: #aaa; cursor: not-allowed; border-color: #eee; }
+.bk-slot.bk-slot-current { background: #e8f4fd; color: #2980b9; cursor: default; border-color: #b8daf5; }
+.bk-rs-actions { display: flex; gap: 10px; margin-bottom: 8px; }
+.bk-rs-error { font-size: 13px; color: #c0392b; min-height: 18px; margin-top: 8px; }
+.status-refund { background: #fff3cd; color: #856404; }

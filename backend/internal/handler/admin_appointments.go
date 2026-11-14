@@ -27,14 +27,15 @@ func (h *Handler) AdminCancelAppointment(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Refund bool `json:"refund"`
+		Refund       bool `json:"refund"`
+		ManualRefund bool `json:"manual_refund"` // возврат через кабинет ЮKassa вручную
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "некорректный запрос"})
 		return
 	}
 
-	res, err := h.apptSvc.AdminCancel(c.Request.Context(), id, req.Refund)
+	res, err := h.apptSvc.AdminCancel(c.Request.Context(), id, req.Refund, req.ManualRefund)
 	if err != nil {
 		log.Printf("admin cancel %s (refund=%v): %v", id, req.Refund, err)
 		if errors.Is(err, service.ErrRefundFailed) {

@@ -65,10 +65,11 @@ const STATUS_LABELS = {
 };
 
 const PAYMENT_LABELS = {
-    pending:  'оплата ожидается',
-    paid:     'оплачено',
-    failed:   'оплата не прошла',
-    refunded: 'возврат оформлен',
+    pending:           'оплата ожидается',
+    paid:              'оплачено',
+    failed:            'оплата не прошла',
+    refunded:          'возврат оформлен',
+    refund_processing: 'возврат оформляется',
 };
 
 // ===== ЗАПИСИ КЛИЕНТОВ =====
@@ -214,7 +215,11 @@ function renderBookings(list) {
         const service = appt.service || {};
         const { datePart, timePart } = formatDateTime(appt.starts_at);
         const statusInfo = STATUS_LABELS[appt.status] || { text: appt.status, cls: 'status-pending' };
-        const paymentLabel = (PAYMENT_LABELS[appt.payment_status] || appt.payment_status) + paymentSuffix(appt);
+        const isRefundProcessing = (appt.refund_status === 'pending' || appt.refund_status === 'manual_pending') && appt.payment_status !== 'refunded';
+        const paymentLabelBase = isRefundProcessing
+            ? PAYMENT_LABELS['refund_processing']
+            : (PAYMENT_LABELS[appt.payment_status] || appt.payment_status);
+        const paymentLabel = paymentLabelBase + paymentSuffix(appt);
 
         return `
             <tr data-id="${appt.id}">
@@ -226,7 +231,7 @@ function renderBookings(list) {
                 <td>${datePart}<br>${timePart}</td>
                 <td>${appt.format === 'online' ? 'Онлайн' : 'Очно'}</td>
                 <td>
-                    <span class="status ${statusInfo.cls}">${statusInfo.text}</span><br>
+                    <span class="status ${isRefundProcessing ? 'status-refund' : statusInfo.cls}">${isRefundProcessing ? (appt.refund_status === 'manual_pending' ? '⏳ Ожидает возврата в ЮKassa' : '⏳ Возврат оформляется') : statusInfo.text}</span><br>
                     <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(paymentLabel)}</span>
                 </td>
                 <td>
@@ -248,7 +253,24 @@ async function cancelBooking(id) {
     if (isPaid && appt.payment_id) {
         const choice = await askRefundChoice(appt);
         if (!choice) return;
-        refund = choice === 'refund';
+        if (choice === 'manual_refund') {
+            // Открываем ЮKassa, одновременно отменяем запись с пометкой manual_pending
+            window.open('https://yookassa.ru/my/payments', '_blank', 'noopener');
+            bookingActionBusy = true;
+            try {
+                await apiFetch(`/admin/appointments/${id}/cancel`, {
+                    method: 'POST',
+                    body: JSON.stringify({ refund: false, manual_refund: true }),
+                });
+            } catch (err) {
+                alert('Не удалось отменить запись: ' + err.message);
+            } finally {
+                bookingActionBusy = false;
+                loadBookings();
+            }
+            return;
+        }
+        refund = false; // keep — отмена без возврата
     } else if (isPaid) {
         if (!confirm('Эта запись оплачена вручную (не через ЮKassa), поэтому вернуть деньги автоматически нельзя.\n\nОтменить запись? Деньги придётся вернуть клиенту самостоятельно.')) return;
     } else {
@@ -262,11 +284,7 @@ async function cancelBooking(id) {
             body: JSON.stringify({ refund }),
         });
         if (res && res.refunded) {
-            alert(res.refund_status === 'succeeded'
-                ? 'Запись отменена, деньги возвращены клиенту.'
-                : 'Запись отменена. Возврат принят ЮKassa, деньги придут клиенту в течение нескольких рабочих дней.');
-        } else if (isPaid) {
-            alert('Запись отменена без возврата денег.');
+            // авто-возврат (refund=true) сейчас не используется, оставлено для совместимости
         }
     } catch (err) {
         alert('Не удалось отменить запись: ' + err.message);
@@ -286,26 +304,203 @@ async function deleteBooking(id) {
     }
 }
 
-async function rescheduleBooking(id) {
-    const input = prompt('Новая дата и время (в формате ГГГГ-ММ-ДД ЧЧ:ММ), например 2026-07-25 14:00:');
-    if (!input) return;
+// ===== Перенос записи: окно со свободными слотами =====
+const BK_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+let bkAvailCache = {};
+let bkRescheduleAppt = null;
+let bkRescheduleSelected = null;
+let bkRsKeyHandler = null;
+let bkRsOverlay = null;
 
-    const match = input.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
-    if (!match) {
-        alert('Неверный формат. Пример: 2026-07-25 14:00');
+// Дата и время в часовом поясе кабинета (Asia/Yekaterinburg), а не браузера и не UTC
+function bkYektParts(iso) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Yekaterinburg', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(new Date(iso));
+    const g = t => parts.find(x => x.type === t).value;
+    return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` };
+}
+
+async function rescheduleBooking(id) {
+    const appt = bookingsById[id];
+    if (!appt) { loadBookings(); return; }
+    bkRescheduleAppt = appt;
+    bkRescheduleSelected = null;
+    bkAvailCache = {}; // свежая занятость при каждом открытии окна
+    openRescheduleModal();
+}
+
+function openRescheduleModal() {
+    const appt = bkRescheduleAppt;
+    if (!appt) return;
+    const { datePart, timePart } = formatDateTime(appt.starts_at);
+    const client = appt.client || {};
+    const service = appt.service || {};
+
+    const overlay = document.createElement('div');
+    overlay.className = 'bk-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:10000;padding:24px 16px;overflow-y:auto;';
+
+    const card = document.createElement('div');
+    card.className = 'bk-reschedule-card';
+    card.style.cssText = 'background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.25);';
+
+    card.innerHTML = `
+        <div class="bk-rs-title">Перенос записи</div>
+        <div class="bk-rs-info">
+            <strong>${escapeHtml(client.first_name)} ${escapeHtml(client.last_name)}</strong><br>
+            ${escapeHtml(service.title)}<br>
+            Текущее время: ${datePart}, ${timePart}
+        </div>
+        <div class="form-group">
+            <label class="form-label">Новая дата</label>
+            <input type="date" id="bkRsDate" class="form-input" min="${schedTodayKey()}">
+        </div>
+        <div class="bk-rs-slots-label">Свободное время <span class="bk-rs-tz">(по Екатеринбургу)</span></div>
+        <div class="bk-rs-slots" id="bkRsSlots"><div class="bk-rs-hint">Выберите дату</div></div>
+        <div class="bk-rs-actions">
+            <button type="button" class="btn" id="bkRsConfirm" onclick="bkRescheduleConfirm()" disabled>Перенести</button>
+            <button type="button" class="btn btn-danger" onclick="bkRescheduleClose()">Отмена</button>
+        </div>
+        <div class="bk-rs-error" id="bkRsError"></div>
+    `;
+
+    bkRsKeyHandler = e => { if (e.key === 'Escape') bkRescheduleClose(); };
+    overlay.addEventListener('click', e => { if (e.target === overlay) bkRescheduleClose(); });
+    document.addEventListener('keydown', bkRsKeyHandler);
+    bkRsOverlay = overlay;
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    const dateInput = document.getElementById('bkRsDate');
+    // По умолчанию: день текущей записи, если он ещё не прошёл, иначе сегодня
+    const curDay = bkYektParts(appt.starts_at).date;
+    const today = schedTodayKey();
+    dateInput.value = curDay > today ? curDay : today;
+    dateInput.addEventListener('change', () => bkLoadSlotsForDate(dateInput.value));
+
+    bkLoadSlotsForDate(dateInput.value);
+    dateInput.focus();
+}
+
+function bkRescheduleClose() {
+    if (bkRsKeyHandler) document.removeEventListener('keydown', bkRsKeyHandler);
+    bkRsKeyHandler = null;
+    if (bkRsOverlay) bkRsOverlay.remove();
+    bkRsOverlay = null;
+    bkRescheduleAppt = null;
+    bkRescheduleSelected = null;
+}
+
+async function bkLoadSlotsForDate(dateStr) {
+    const slotsEl = document.getElementById('bkRsSlots');
+    if (!slotsEl) return;
+    slotsEl.innerHTML = '<div class="bk-rs-hint">Загрузка…</div>';
+    bkRescheduleSelected = null;
+    document.getElementById('bkRsConfirm').disabled = true;
+
+    const month = dateStr.slice(0, 7);
+    let busy = bkAvailCache[month];
+    if (!busy) {
+        try {
+            const resp = await fetch('/api/v1/availability?month=' + month);
+            busy = await resp.json() || {};
+            bkAvailCache[month] = busy;
+        } catch (err) {
+            slotsEl.innerHTML = '<div class="bk-rs-hint">Не удалось загрузить расписание</div>';
+            return;
+        }
+    }
+
+    const appt = bkRescheduleAppt;
+    if (!appt || !document.getElementById('bkRsSlots')) return; // окно уже закрыто
+    const durationMin = Math.round((new Date(appt.ends_at) - new Date(appt.starts_at)) / 60000);
+    const cur = bkYektParts(appt.starts_at);
+    const curDate = cur.date;
+    const curTime = cur.time;
+    const busySet = new Set(busy[dateStr] || []);
+    // Часы самой переносимой записи не считаем занятыми
+    if (dateStr === curDate) {
+        const startH = parseInt(curTime.slice(0, 2), 10);
+        for (let hh = startH; hh * 60 < startH * 60 + durationMin; hh++) {
+            busySet.delete(String(hh).padStart(2, '0') + ':00');
+        }
+    }
+
+    const now = new Date();
+    const yektParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Yekaterinburg', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(now);
+    const gp = t => (gp2 => gp2 ? gp2.value : '')(yektParts.find(p => p.type === t));
+    const nowYekt = `${gp('year')}-${gp('month')}-${gp('day')}`;
+    const nowHour = parseInt(gp('hour'), 10);
+
+    const available = [];
+    for (const slot of BK_SLOTS) {
+        const h = parseInt(slot.slice(0, 2), 10);
+        const endMin = h * 60 + durationMin;
+        if (endMin > 20 * 60) continue; // сеанс выходит за 20:00
+
+        // Проверяем все часы, которые покроет сеанс
+        let free = true;
+        for (let hh = h; hh * 60 < endMin; hh++) {
+            const key = String(hh).padStart(2, '0') + ':00';
+            if (busySet.has(key)) { free = false; break; }
+        }
+
+        // Не показываем прошедшие часы сегодня
+        if (dateStr === nowYekt && h <= nowHour) free = false;
+
+        const isCurrent = (dateStr === curDate && slot === curTime);
+        available.push({ slot, free, isCurrent });
+    }
+
+    if (available.length === 0) {
+        slotsEl.innerHTML = '<div class="bk-rs-hint">На эту дату нет свободных слотов</div>';
         return;
     }
-    const [, y, mo, d, h, mi] = match;
-    const startsAt = toCalendarISO(Number(y), Number(mo), Number(d), Number(h), Number(mi));
+
+    slotsEl.innerHTML = available.map(s => {
+        if (s.isCurrent) return `<button type="button" class="bk-slot bk-slot-current" disabled>${s.slot} (текущее)</button>`;
+        if (!s.free) return `<button type="button" class="bk-slot bk-slot-busy" disabled>${s.slot}</button>`;
+        return `<button type="button" class="bk-slot" onclick="bkSelectSlot(this, '${s.slot}')">${s.slot}</button>`;
+    }).join('');
+}
+
+function bkSelectSlot(btn, slot) {
+    bkRescheduleSelected = slot;
+    document.querySelectorAll('.bk-slot.bk-slot-selected').forEach(b => b.classList.remove('bk-slot-selected'));
+    btn.classList.add('bk-slot-selected');
+    document.getElementById('bkRsConfirm').disabled = false;
+}
+
+async function bkRescheduleConfirm() {
+    if (!bkRescheduleSelected || !bkRescheduleAppt) return;
+    const dateStr = document.getElementById('bkRsDate').value;
+    if (!dateStr) return;
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [hh, mi] = bkRescheduleSelected.split(':').map(Number);
+    const startsAt = toCalendarISO(y, mo, d, hh, mi);
+
+    const errEl = document.getElementById('bkRsError');
+    errEl.textContent = '';
+    const btn = document.getElementById('bkRsConfirm');
+    btn.disabled = true;
+    btn.textContent = 'Перенос…';
 
     try {
-        await apiFetch(`/admin/appointments/${id}/reschedule`, {
+        await apiFetch(`/admin/appointments/${bkRescheduleAppt.id}/reschedule`, {
             method: 'PATCH',
             body: JSON.stringify({ starts_at: startsAt }),
         });
+        bkRescheduleClose();
         loadBookings();
     } catch (err) {
-        alert('Не удалось перенести запись: ' + err.message);
+        errEl.textContent = 'Не удалось перенести: ' + err.message;
+        btn.disabled = false;
+        btn.textContent = 'Перенести';
     }
 }
 
@@ -401,10 +596,19 @@ function formatRubles(kopeks) {
 }
 
 function paymentSuffix(appt) {
-    let suffix = '';
-    if (appt.amount_kopeks > 0) suffix += ' · ' + formatRubles(appt.amount_kopeks);
-    if (appt.payment_mode === 'prepay_50') suffix += ' · предоплата 50%';
-    return suffix;
+    if (appt.payment_mode === 'prepay_50' && appt.amount_kopeks > 0) {
+        const prepay   = appt.amount_kopeks;
+        const fullPrice = prepay * 2;
+        const remainder = fullPrice - prepay;
+        let s = ' · предоплата ' + formatRubles(prepay);
+        if (appt.payment_status !== 'paid' && appt.payment_status !== 'refunded') {
+            // оплата ещё не прошла — показываем только сумму предоплаты
+        } else if (appt.payment_status === 'paid') {
+            s += ' · остаток при визите ' + formatRubles(remainder);
+        }
+        return s;
+    }
+    return appt.amount_kopeks > 0 ? ' · ' + formatRubles(appt.amount_kopeks) : '';
 }
 
 function bookingBtn(label, handler, danger) {
@@ -433,7 +637,7 @@ function bookingActionsHtml(appt) {
     return parts.join(' ');
 }
 
-// Окно «Вернуть клиенту деньги?». Возвращает 'refund', 'keep' или null (не отменять).
+// Окно «Вернуть клиенту деньги?». Возвращает 'manual_refund', 'keep' или null (не отменять).
 function askRefundChoice(appt) {
     return new Promise(resolve => {
         const client = appt.client || {};
@@ -455,12 +659,11 @@ function askRefundChoice(appt) {
                 ${appt.amount_kopeks > 0 ? `<br>Оплачено: ${formatRubles(appt.amount_kopeks)}` : ''}
             </div>
             <div style="font-size:13px;color:#666;line-height:1.5;margin-bottom:16px;">
-                «Да» — запись отменится, деньги вернутся клиенту через ЮKassa, клиент получит письмо.<br>
-                «Нет» — запись отменится без возврата денег.
+                Выберите действие:
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;">
-                <button type="button" class="btn" data-choice="refund">Да, вернуть деньги</button>
-                <button type="button" class="btn btn-danger" data-choice="keep">Нет, отменить без возврата</button>
+                <button type="button" class="btn" data-choice="manual_refund">Перейти в ЮKassa для возврата</button>
+                <button type="button" class="btn btn-danger" data-choice="keep">Отменить без возврата</button>
                 <button type="button" class="btn" data-choice="back" style="background:#eee;color:#333;">Не отменять</button>
             </div>
         `;

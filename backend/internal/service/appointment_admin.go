@@ -31,7 +31,7 @@ type AdminCancelResult struct {
 // AdminCancel отменяет запись по решению специалиста.
 // refund=true: сначала возврат денег через API ЮKassa, и только если он принят, запись отменяется.
 // refund=false: запись отменяется, деньги не трогаем.
-func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, refund bool) (*AdminCancelResult, error) {
+func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, refund, manualRefund bool) (*AdminCancelResult, error) {
 	appt, err := s.apptRepo.GetByIDWithRelations(ctx, apptID)
 	if err != nil {
 		return nil, err
@@ -46,6 +46,28 @@ func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, 
 	}
 
 	result := &AdminCancelResult{}
+
+	// Ручной возврат: запись отменяется, статус возврата = manual_pending.
+	// Елена делает возврат в кабинете ЮKassa вручную; вебхук refund.succeeded обновит статус.
+	if manualRefund {
+		if err := s.cancelAppointmentStatus(ctx, appt); err != nil {
+			return nil, err
+		}
+		if err := s.apptRepo.SetRefund(ctx, apptID, "", "manual_pending"); err != nil {
+			log.Printf("admin cancel: SetRefund manual_pending %s: %v", apptID, err)
+		}
+		if err := s.mailer.SendCancellationConfirmation(appt.Client.Email, mailer.CancellationData{
+			FirstName:       appt.Client.FirstName,
+			AppointmentDate: appt.StartsAt,
+			StaffInitiated:  true,
+			ManualRefund:    true,
+			DeadlineHours:   s.cancellationDeadlineHours,
+			AmountKopeks:    appt.AmountKopeks,
+		}); err != nil {
+			log.Printf("admin cancel: письмо клиенту по записи %s не отправлено: %v", apptID, err)
+		}
+		return result, nil
+	}
 
 	if refund {
 		if appt.PaymentStatus != models.PaymentStatusPaid {
@@ -63,6 +85,9 @@ func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, 
 		}
 		result.Refunded = true
 		result.RefundStatus = info.Status
+		if err := s.apptRepo.SetRefund(ctx, apptID, info.RefundID, info.Status); err != nil {
+			log.Printf("admin cancel: не удалось сохранить данные возврата по записи %s: %v", apptID, err)
+		}
 	}
 
 	if err := s.cancelAppointmentStatus(ctx, appt); err != nil {
@@ -71,6 +96,23 @@ func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, 
 				apptID, result.RefundStatus, err)
 		}
 		return nil, err
+	}
+
+	// Если ни refund ни manualRefund — отмена без возврата; шлём письмо.
+	// (при refund=true письмо отправит блок ниже или вебхук; при manualRefund=true письмо уже отправлено выше)
+	if !refund && !manualRefund {
+		paidManually := appt.PaymentStatus == models.PaymentStatusPaid && appt.PaymentID == ""
+		if err := s.mailer.SendCancellationConfirmation(appt.Client.Email, mailer.CancellationData{
+			FirstName:       appt.Client.FirstName,
+			AppointmentDate: appt.StartsAt,
+			StaffInitiated:  true,
+			ManualPayment:   paidManually,
+			Paid:            appt.PaymentStatus == models.PaymentStatusPaid,
+			DeadlineHours:   s.cancellationDeadlineHours,
+			AmountKopeks:    appt.AmountKopeks,
+		}); err != nil {
+			log.Printf("admin cancel: письмо клиенту по записи %s не отправлено: %v", apptID, err)
+		}
 	}
 
 	// Возврат прошёл сразу: фиксируем статус и пишем клиенту. Если возврат ещё «в обработке»,
@@ -86,6 +128,7 @@ func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, 
 				Refund:          true,
 				DeadlineHours:   s.cancellationDeadlineHours,
 				StaffInitiated:  true,
+				AmountKopeks:    appt.AmountKopeks,
 			}); err != nil {
 				log.Printf("admin cancel: письмо клиенту по записи %s не отправлено: %v", apptID, err)
 			}

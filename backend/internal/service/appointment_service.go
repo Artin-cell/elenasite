@@ -304,6 +304,9 @@ func (s *AppointmentService) ConfirmPayment(ctx context.Context, apptID uuid.UUI
 			if refundErr != nil {
 				return fmt.Errorf("платёж получен после отмены записи; возврат не выполнен: %w", refundErr)
 			}
+			if err := s.apptRepo.SetRefund(ctx, apptID, refund.RefundID, refund.Status); err != nil {
+				fmt.Printf("warn: save refund for %s: %v\n", apptID, err)
+			}
 			if refund.Status == "succeeded" {
 				return s.apptRepo.UpdatePaymentStatus(ctx, apptID, models.PaymentStatusRefunded)
 			}
@@ -328,12 +331,18 @@ func (s *AppointmentService) NotifyRefunded(ctx context.Context, apptID uuid.UUI
 	if err != nil {
 		return err
 	}
+	// При ручном возврате клиент уже получил письмо при отмене.
+	// Второе письмо не шлём: это обычное подтверждение возврата через ЮKassa.
+	if appt.RefundStatus == "manual_pending" {
+		return nil
+	}
 	return s.mailer.SendCancellationConfirmation(appt.Client.Email, mailer.CancellationData{
 		FirstName:       appt.Client.FirstName,
 		AppointmentDate: appt.StartsAt,
 		Refund:          true,
 		DeadlineHours:   s.cancellationDeadlineHours,
 		StaffInitiated:  true,
+		AmountKopeks:    appt.AmountKopeks,
 	})
 }
 
@@ -405,6 +414,9 @@ func (s *AppointmentService) ConfirmCancellation(ctx context.Context, token stri
 		if refundStatus != "succeeded" && refundStatus != "pending" {
 			return fmt.Errorf("возврат не принят: статус %s", refundStatus)
 		}
+		if err := s.apptRepo.SetRefund(ctx, appt.ID, refund.RefundID, refund.Status); err != nil {
+			fmt.Printf("warn: save refund for %s: %v\n", appt.ID, err)
+		}
 	}
 
 	used, err := s.tokenRepo.MarkUsed(ctx, ct.ID)
@@ -427,6 +439,7 @@ func (s *AppointmentService) ConfirmCancellation(ctx context.Context, token stri
 		AppointmentDate: appt.StartsAt,
 		Refund:          needsRefund,
 		DeadlineHours:   s.cancellationDeadlineHours,
+		AmountKopeks:    appt.AmountKopeks,
 	}); err != nil {
 		fmt.Printf("warn: cancellation email for %s: %v\n", appt.ID, err)
 	}
@@ -527,11 +540,16 @@ func (s *AppointmentService) reissueTokenAndNotifyReschedule(ctx context.Context
 
 	cancelURL := fmt.Sprintf("%s/?cancel_token=%s", s.baseURL, rawToken)
 
+	icalURLR := fmt.Sprintf("%s/api/v1/appointments/%s/ical", s.baseURL, appt.ID)
 	return s.mailer.SendRescheduleNotice(appt.Client.Email, mailer.RescheduleData{
-		FirstName: appt.Client.FirstName,
-		OldDate:   oldStart,
-		NewDate:   newStart,
-		CancelURL: cancelURL,
+		FirstName:    appt.Client.FirstName,
+		OldDate:      oldStart,
+		NewDate:      newStart,
+		CancelURL:    cancelURL,
+		ServiceTitle: appt.Service.Title,
+		DurationMin:  int(appt.EndsAt.Sub(appt.StartsAt) / time.Minute),
+		IsOnline:     appt.Format == models.AppointmentOnline,
+		ICalURL:      icalURLR,
 	})
 }
 
@@ -557,10 +575,15 @@ func (s *AppointmentService) issueTokenAndNotify(ctx context.Context, appt *mode
 
 	cancelURL := fmt.Sprintf("%s/?cancel_token=%s", s.baseURL, rawToken)
 
+	icalURL := fmt.Sprintf("%s/api/v1/appointments/%s/ical", s.baseURL, appt.ID)
 	return s.mailer.SendBookingConfirmation(client.Email, mailer.BookingData{
 		FirstName:       client.FirstName,
 		AppointmentDate: appt.StartsAt,
 		CancelURL:       cancelURL,
+		ServiceTitle:    appt.Service.Title,
+		DurationMin:     int(appt.EndsAt.Sub(appt.StartsAt) / time.Minute),
+		IsOnline:        appt.Format == models.AppointmentOnline,
+		ICalURL:         icalURL,
 	})
 }
 
