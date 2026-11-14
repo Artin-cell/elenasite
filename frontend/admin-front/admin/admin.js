@@ -286,26 +286,186 @@ async function deleteBooking(id) {
     }
 }
 
-async function rescheduleBooking(id) {
-    const input = prompt('Новая дата и время (в формате ГГГГ-ММ-ДД ЧЧ:ММ), например 2026-07-25 14:00:');
-    if (!input) return;
+// ===== Перенос записи: окно со свободными слотами =====
+const BK_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+let bkAvailCache = {};
+let bkRescheduleAppt = null;
+let bkRescheduleSelected = null;
 
-    const match = input.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
-    if (!match) {
-        alert('Неверный формат. Пример: 2026-07-25 14:00');
+async function rescheduleBooking(id) {
+    const appt = bookingsById[id];
+    if (!appt) { loadBookings(); return; }
+    bkRescheduleAppt = appt;
+    bkRescheduleSelected = null;
+    openRescheduleModal();
+}
+
+function openRescheduleModal() {
+    const appt = bkRescheduleAppt;
+    if (!appt) return;
+    const { datePart, timePart } = formatDateTime(appt.starts_at);
+    const client = appt.client || {};
+    const service = appt.service || {};
+
+    const overlay = document.createElement('div');
+    overlay.className = 'bk-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:10000;padding:24px 16px;overflow-y:auto;';
+
+    const card = document.createElement('div');
+    card.className = 'bk-reschedule-card';
+    card.style.cssText = 'background:#fff;border-radius:12px;max-width:480px;width:100%;padding:24px;box-shadow:0 10px 40px rgba(0,0,0,.25);';
+
+    card.innerHTML = `
+        <div class="bk-rs-title">Перенос записи</div>
+        <div class="bk-rs-info">
+            <strong>${escapeHtml(client.first_name)} ${escapeHtml(client.last_name)}</strong><br>
+            ${escapeHtml(service.title)}<br>
+            Текущее время: ${datePart}, ${timePart}
+        </div>
+        <div class="form-group">
+            <label class="form-label">Новая дата</label>
+            <input type="date" id="bkRsDate" class="form-input" min="${schedTodayKey()}">
+        </div>
+        <div class="bk-rs-slots-label">Свободное время <span class="bk-rs-tz">(по Екатеринбургу)</span></div>
+        <div class="bk-rs-slots" id="bkRsSlots"><div class="bk-rs-hint">Выберите дату</div></div>
+        <div class="bk-rs-actions">
+            <button type="button" class="btn" id="bkRsConfirm" onclick="bkRescheduleConfirm()" disabled>Перенести</button>
+            <button type="button" class="btn btn-danger" onclick="bkRescheduleClose()">Отмена</button>
+        </div>
+        <div class="bk-rs-error" id="bkRsError"></div>
+    `;
+
+    function close() { document.removeEventListener('keydown', onKey); overlay.remove(); bkRescheduleAppt = null; }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', onKey);
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    const dateInput = document.getElementById('bkRsDate');
+    // По умолчанию — через неделю от текущей записи
+    const defaultDate = new Date(appt.starts_at);
+    defaultDate.setDate(defaultDate.getDate() + 7);
+    const dp = n => String(n).padStart(2, '0');
+    dateInput.value = `${defaultDate.getFullYear()}-${dp(defaultDate.getMonth() + 1)}-${dp(defaultDate.getDate())}`;
+    dateInput.addEventListener('change', () => bkLoadSlotsForDate(dateInput.value));
+
+    bkLoadSlotsForDate(dateInput.value);
+    dateInput.focus();
+}
+
+function bkRescheduleClose() {
+    const overlay = document.querySelector('.bk-modal');
+    if (overlay) {
+        document.removeEventListener('keydown', () => {});
+        overlay.remove();
+    }
+    bkRescheduleAppt = null;
+    bkRescheduleSelected = null;
+}
+
+async function bkLoadSlotsForDate(dateStr) {
+    const slotsEl = document.getElementById('bkRsSlots');
+    if (!slotsEl) return;
+    slotsEl.innerHTML = '<div class="bk-rs-hint">Загрузка…</div>';
+    bkRescheduleSelected = null;
+    document.getElementById('bkRsConfirm').disabled = true;
+
+    const month = dateStr.slice(0, 7);
+    let busy = bkAvailCache[month];
+    if (!busy) {
+        try {
+            const resp = await fetch('/api/v1/availability?month=' + month);
+            busy = await resp.json() || {};
+            bkAvailCache[month] = busy;
+        } catch (err) {
+            slotsEl.innerHTML = '<div class="bk-rs-hint">Не удалось загрузить расписание</div>';
+            return;
+        }
+    }
+
+    const dayBusy = busy[dateStr] || [];
+    const busySet = new Set(dayBusy);
+    const appt = bkRescheduleAppt;
+    const durationMin = Math.round((new Date(appt.ends_at) - new Date(appt.starts_at)) / 60000);
+
+    // Текущая дата/время записи (чтобы пометить её отдельно)
+    const curDate = appt.starts_at.slice(0, 10);
+    const curTime = appt.starts_at.slice(11, 16);
+
+    const now = new Date();
+    const yektParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Yekaterinburg', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(now);
+    const gp = t => (gp2 => gp2 ? gp2.value : '')(yektParts.find(p => p.type === t));
+    const nowYekt = `${gp('year')}-${gp('month')}-${gp('day')}`;
+    const nowHour = parseInt(gp('hour'), 10);
+
+    const available = [];
+    for (const slot of BK_SLOTS) {
+        const h = parseInt(slot.slice(0, 2), 10);
+        const endMin = h * 60 + durationMin;
+        if (endMin > 20 * 60) continue; // сеанс выходит за 20:00
+
+        // Проверяем все часы, которые покроет сеанс
+        let free = true;
+        for (let hh = h; hh * 60 < endMin; hh++) {
+            const key = String(hh).padStart(2, '0') + ':00';
+            if (busySet.has(key)) { free = false; break; }
+        }
+
+        // Не показываем прошедшие часы сегодня
+        if (dateStr === nowYekt && h <= nowHour) free = false;
+
+        const isCurrent = (dateStr === curDate && slot === curTime);
+        available.push({ slot, free, isCurrent });
+    }
+
+    if (available.length === 0) {
+        slotsEl.innerHTML = '<div class="bk-rs-hint">На эту дату нет свободных слотов</div>';
         return;
     }
-    const [, y, mo, d, h, mi] = match;
-    const startsAt = toCalendarISO(Number(y), Number(mo), Number(d), Number(h), Number(mi));
+
+    slotsEl.innerHTML = available.map(s => {
+        if (s.isCurrent) return `<button type="button" class="bk-slot bk-slot-current" disabled>${s.slot} (текущее)</button>`;
+        if (!s.free) return `<button type="button" class="bk-slot bk-slot-busy" disabled>${s.slot}</button>`;
+        return `<button type="button" class="bk-slot" onclick="bkSelectSlot(this, '${s.slot}')">${s.slot}</button>`;
+    }).join('');
+}
+
+function bkSelectSlot(btn, slot) {
+    bkRescheduleSelected = slot;
+    document.querySelectorAll('.bk-slot.bk-slot-selected').forEach(b => b.classList.remove('bk-slot-selected'));
+    btn.classList.add('bk-slot-selected');
+    document.getElementById('bkRsConfirm').disabled = false;
+}
+
+async function bkRescheduleConfirm() {
+    if (!bkRescheduleSelected || !bkRescheduleAppt) return;
+    const dateStr = document.getElementById('bkRsDate').value;
+    if (!dateStr) return;
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [hh, mi] = bkRescheduleSelected.split(':').map(Number);
+    const startsAt = toCalendarISO(y, mo, d, hh, mi);
+
+    const errEl = document.getElementById('bkRsError');
+    errEl.textContent = '';
+    const btn = document.getElementById('bkRsConfirm');
+    btn.disabled = true;
+    btn.textContent = 'Перенос…';
 
     try {
-        await apiFetch(`/admin/appointments/${id}/reschedule`, {
+        await apiFetch(`/admin/appointments/${bkRescheduleAppt.id}/reschedule`, {
             method: 'PATCH',
             body: JSON.stringify({ starts_at: startsAt }),
         });
+        bkRescheduleClose();
         loadBookings();
     } catch (err) {
-        alert('Не удалось перенести запись: ' + err.message);
+        errEl.textContent = 'Не удалось перенести: ' + err.message;
+        btn.disabled = false;
+        btn.textContent = 'Перенести';
     }
 }
 
