@@ -98,6 +98,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 
 	api.POST("/appointments", h.publicBookingLimiter, h.CreateAppointment)
 
+	api.GET("/appointments/:id/ical", h.publicCancelLimiter, h.AppointmentICal)
 	api.GET("/cancel", h.publicCancelLimiter, h.CancelPreview)
 	api.POST("/cancel", h.publicCancelLimiter, h.CancelConfirm)
 

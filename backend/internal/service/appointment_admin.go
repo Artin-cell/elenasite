@@ -98,6 +98,23 @@ func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, 
 		return nil, err
 	}
 
+	// Если ни refund ни manualRefund — отмена без возврата; шлём письмо.
+	// (при refund=true письмо отправит блок ниже или вебхук; при manualRefund=true письмо уже отправлено выше)
+	if !refund && !manualRefund {
+		paidManually := appt.PaymentStatus == models.PaymentStatusPaid && appt.PaymentID == ""
+		if err := s.mailer.SendCancellationConfirmation(appt.Client.Email, mailer.CancellationData{
+			FirstName:       appt.Client.FirstName,
+			AppointmentDate: appt.StartsAt,
+			StaffInitiated:  true,
+			ManualPayment:   paidManually,
+			Paid:            appt.PaymentStatus == models.PaymentStatusPaid,
+			DeadlineHours:   s.cancellationDeadlineHours,
+			AmountKopeks:    appt.AmountKopeks,
+		}); err != nil {
+			log.Printf("admin cancel: письмо клиенту по записи %s не отправлено: %v", apptID, err)
+		}
+	}
+
 	// Возврат прошёл сразу: фиксируем статус и пишем клиенту. Если возврат ещё «в обработке»,
 	// статус и письмо обработает вебхук refund.succeeded.
 	if result.Refunded && result.RefundStatus == "succeeded" {

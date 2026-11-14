@@ -331,6 +331,11 @@ func (s *AppointmentService) NotifyRefunded(ctx context.Context, apptID uuid.UUI
 	if err != nil {
 		return err
 	}
+	// При ручном возврате клиент уже получил письмо при отмене.
+	// Второе письмо не шлём: это обычное подтверждение возврата через ЮKassa.
+	if appt.RefundStatus == "manual_pending" {
+		return nil
+	}
 	return s.mailer.SendCancellationConfirmation(appt.Client.Email, mailer.CancellationData{
 		FirstName:       appt.Client.FirstName,
 		AppointmentDate: appt.StartsAt,
@@ -535,6 +540,7 @@ func (s *AppointmentService) reissueTokenAndNotifyReschedule(ctx context.Context
 
 	cancelURL := fmt.Sprintf("%s/?cancel_token=%s", s.baseURL, rawToken)
 
+	icalURLR := fmt.Sprintf("%s/api/v1/appointments/%s/ical", s.baseURL, appt.ID)
 	return s.mailer.SendRescheduleNotice(appt.Client.Email, mailer.RescheduleData{
 		FirstName:    appt.Client.FirstName,
 		OldDate:      oldStart,
@@ -543,6 +549,7 @@ func (s *AppointmentService) reissueTokenAndNotifyReschedule(ctx context.Context
 		ServiceTitle: appt.Service.Title,
 		DurationMin:  int(appt.EndsAt.Sub(appt.StartsAt) / time.Minute),
 		IsOnline:     appt.Format == models.AppointmentOnline,
+		ICalURL:      icalURLR,
 	})
 }
 
@@ -568,6 +575,7 @@ func (s *AppointmentService) issueTokenAndNotify(ctx context.Context, appt *mode
 
 	cancelURL := fmt.Sprintf("%s/?cancel_token=%s", s.baseURL, rawToken)
 
+	icalURL := fmt.Sprintf("%s/api/v1/appointments/%s/ical", s.baseURL, appt.ID)
 	return s.mailer.SendBookingConfirmation(client.Email, mailer.BookingData{
 		FirstName:       client.FirstName,
 		AppointmentDate: appt.StartsAt,
@@ -575,6 +583,7 @@ func (s *AppointmentService) issueTokenAndNotify(ctx context.Context, appt *mode
 		ServiceTitle:    appt.Service.Title,
 		DurationMin:     int(appt.EndsAt.Sub(appt.StartsAt) / time.Minute),
 		IsOnline:        appt.Format == models.AppointmentOnline,
+		ICalURL:         icalURL,
 	})
 }
 
