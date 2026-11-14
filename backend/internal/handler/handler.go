@@ -122,7 +122,9 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		protected.POST("/appointments/:id/cancel", h.AdminCancelAppointment)
 		protected.POST("/appointments/:id/mark-paid", h.AdminMarkPaid)
 
+		protected.GET("/services", h.AdminListServices)
 		protected.POST("/services", h.AdminCreateService)
+		protected.PATCH("/services/:id", h.AdminUpdateService)
 		protected.PUT("/services/:id", h.AdminUpdateService)
 		protected.DELETE("/services/:id", h.AdminDeleteService)
 
@@ -606,50 +608,7 @@ func (h *Handler) AdminUpdateStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-func (h *Handler) AdminCreateService(c *gin.Context) {
-	var s models.Service
-	if err := c.ShouldBindJSON(&s); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
-		return
-	}
-	if err := h.serviceRepo.Create(c.Request.Context(), &s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	c.JSON(http.StatusCreated, s)
-}
-
-func (h *Handler) AdminUpdateService(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	var s models.Service
-	if err := c.ShouldBindJSON(&s); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
-		return
-	}
-	s.ID = id
-	if err := h.serviceRepo.Update(c.Request.Context(), &s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	c.JSON(http.StatusOK, s)
-}
-
-func (h *Handler) AdminDeleteService(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	if err := h.serviceRepo.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
+// Обработчики услуг: admin_services.go
 
 func (h *Handler) AdminListNews(c *gin.Context) {
 	list, err := h.newsRepo.ListAll(c.Request.Context())
