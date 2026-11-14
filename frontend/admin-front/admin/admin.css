@@ -562,3 +562,11 @@
         .sch-wide { flex: 1; min-width: 220px; }
         .sch-period { margin-top: 30px; }
         .sch-error { padding: 20px; color: #c44; grid-column: 1 / -1; }
+
+/* ===== УСЛУГИ ===== */
+.svc-form-title { font-family: var(--font-serif); font-size: 20px; color: var(--primary); margin-bottom: 20px; }
+.svc-checks { display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; }
+.svc-checks label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.svc-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.svc-desc { white-space: pre-line; }
+.svc-card-muted { opacity: 0.7; }

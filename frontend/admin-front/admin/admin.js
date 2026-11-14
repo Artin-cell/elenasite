@@ -411,6 +411,7 @@ async function markBookingPaid(id) {
 document.addEventListener('DOMContentLoaded', () => {
     const link = document.querySelector('.admin-logout');
     if (link) link.addEventListener('click', e => { e.preventDefault(); logout(); });
+    loadServices();
 });
 
 
@@ -723,4 +724,178 @@ function schedOpenPeriod() {
         const res = await apiFetch(`/admin/blocks?from=${from}&to=${to}`, { method: 'DELETE' });
         alert(`Открыто закрытий: ${res.deleted}.`);
     }, 'Не удалось открыть период');
+}
+
+// ===== УСЛУГИ =====
+const SVC_FORMAT_LABELS = { online: 'только онлайн', offline: 'только очно', both: 'онлайн и очно' };
+let svcById = {};
+let svcEditingId = null;
+let svcBusy = false;
+
+function svcFormatPrice(kopeks) {
+    const rub = (kopeks || 0) / 100;
+    if (rub === 0) return 'бесплатно';
+    return rub.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ₽';
+}
+
+async function loadServices() {
+    const box = document.getElementById('svcList');
+    try {
+        const list = await apiFetch('/admin/services');
+        renderServices(list || []);
+    } catch (err) {
+        box.innerHTML = `<div class="empty-state">Не удалось загрузить услуги: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function renderServices(list) {
+    const box = document.getElementById('svcList');
+    svcById = {};
+    list.forEach(s => { svcById[s.id] = s; });
+
+    if (list.length === 0) {
+        box.innerHTML = '<div class="empty-state">Услуг пока нет. Нажмите «Добавить новую услугу».</div>';
+        return;
+    }
+
+    const sorted = list.slice().sort((a, b) =>
+        (Number(b.is_active) - Number(a.is_active)) || String(a.title).localeCompare(String(b.title), 'ru'));
+
+    box.innerHTML = sorted.map(s => {
+        const onSite = s.is_active && !s.is_demo;
+        const badges = [];
+        if (onSite) badges.push('<span class="status status-confirmed">На сайте</span>');
+        if (!s.is_active) badges.push('<span class="status status-cancelled">Скрыта</span>');
+        if (s.is_demo) badges.push('<span class="status status-pending">Демо</span>');
+        const id = escapeHtml(s.id);
+        return `
+            <div class="card${onSite ? '' : ' svc-card-muted'}">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">${escapeHtml(s.title)}</h3>
+                        <p class="card-meta">${escapeHtml(s.duration_min)} минут • ${svcFormatPrice(s.price_kopeks)} • ${escapeHtml(SVC_FORMAT_LABELS[s.format] || s.format)}</p>
+                    </div>
+                    <div class="svc-badges">${badges.join('')}</div>
+                </div>
+                ${s.description ? `<p class="card-description svc-desc">${escapeHtml(s.description)}</p>` : ''}
+                <div class="card-actions">
+                    <button class="btn btn-small" onclick="svcOpenForm('${id}')">Редактировать</button>
+                    <button class="btn btn-small" onclick="svcToggleActive('${id}')">${s.is_active ? 'Скрыть с сайта' : 'Показать на сайте'}</button>
+                    <button class="btn btn-small btn-danger" onclick="svcDelete('${id}')">Удалить</button>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function svcOpenForm(id) {
+    const s = id ? svcById[id] : null;
+    if (id && !s) return;
+    svcEditingId = s ? s.id : null;
+    document.getElementById('svcFormTitle').textContent = s ? 'Редактирование услуги' : 'Новая услуга';
+    document.getElementById('svcTitle').value = s ? s.title : '';
+    document.getElementById('svcDescription').value = s ? s.description : '';
+    document.getElementById('svcPrice').value = s ? s.price_kopeks / 100 : '';
+    document.getElementById('svcDuration').value = s ? s.duration_min : 60;
+    document.getElementById('svcFormat').value = s ? s.format : 'both';
+    document.getElementById('svcIsActive').checked = s ? s.is_active : true;
+    document.getElementById('svcIsDemo').checked = s ? s.is_demo : false;
+    const form = document.getElementById('svcForm');
+    form.style.display = 'block';
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('svcTitle').focus();
+}
+
+function svcCloseForm() {
+    svcEditingId = null;
+    document.getElementById('svcForm').style.display = 'none';
+}
+
+async function svcSave() {
+    if (svcBusy) return;
+    const title = document.getElementById('svcTitle').value.trim();
+    const description = document.getElementById('svcDescription').value.trim();
+    const priceRaw = document.getElementById('svcPrice').value.trim().replace(',', '.');
+    const durationRaw = document.getElementById('svcDuration').value.trim();
+    const isActive = document.getElementById('svcIsActive').checked;
+    const isDemo = document.getElementById('svcIsDemo').checked;
+
+    if (!title) { alert('Укажите название услуги.'); return; }
+    const price = Number(priceRaw);
+    if (priceRaw === '' || !Number.isFinite(price) || price < 0) {
+        alert('Укажите цену в рублях (0, если услуга бесплатная).');
+        return;
+    }
+    const duration = Number(durationRaw);
+    if (!Number.isInteger(duration) || duration < 15 || duration > 480) {
+        alert('Длительность: целое число минут от 15 до 480.');
+        return;
+    }
+    if (price === 0 && isActive && !isDemo &&
+        !confirm('Цена 0 ₽: клиенты будут записываться бесплатно. Сохранить?')) return;
+
+    const body = {
+        title,
+        description,
+        price_kopeks: Math.round(price * 100),
+        duration_min: duration,
+        format: document.getElementById('svcFormat').value,
+        is_active: isActive,
+        is_demo: isDemo,
+    };
+
+    svcBusy = true;
+    const btn = document.getElementById('svcSaveBtn');
+    btn.disabled = true;
+    try {
+        if (svcEditingId) {
+            await apiFetch(`/admin/services/${svcEditingId}`, { method: 'PATCH', body: JSON.stringify(body) });
+        } else {
+            await apiFetch('/admin/services', { method: 'POST', body: JSON.stringify(body) });
+        }
+        svcCloseForm();
+        servicesForSelect = []; // список услуг в форме ручной записи перезагрузится
+        await loadServices();
+    } catch (err) {
+        alert('Не удалось сохранить услугу: ' + err.message);
+    } finally {
+        svcBusy = false;
+        btn.disabled = false;
+    }
+}
+
+async function svcToggleActive(id) {
+    const s = svcById[id];
+    if (!s || svcBusy) return;
+    const next = !s.is_active;
+    const question = next
+        ? `Показать услугу «${s.title}» на сайте?`
+        : `Скрыть услугу «${s.title}» с сайта?\n\nКлиенты больше не смогут на неё записаться. Существующие записи останутся.`;
+    if (!confirm(question)) return;
+    svcBusy = true;
+    try {
+        await apiFetch(`/admin/services/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active: next }) });
+        servicesForSelect = [];
+        await loadServices();
+    } catch (err) {
+        alert('Не удалось изменить видимость услуги: ' + err.message);
+    } finally {
+        svcBusy = false;
+    }
+}
+
+async function svcDelete(id) {
+    const s = svcById[id];
+    if (!s || svcBusy) return;
+    if (!confirm(`Удалить услугу «${s.title}» безвозвратно?`)) return;
+    svcBusy = true;
+    try {
+        await apiFetch(`/admin/services/${id}`, { method: 'DELETE' });
+        if (svcEditingId === id) svcCloseForm();
+        servicesForSelect = [];
+        await loadServices();
+    } catch (err) {
+        alert('Не удалось удалить услугу: ' + err.message);
+    } finally {
+        svcBusy = false;
+    }
 }

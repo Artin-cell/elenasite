@@ -60,61 +60,49 @@
                 <p class="section-subtitle">Добавляйте, редактируйте и удаляйте услуги, которые вы предоставляете</p>
             </div>
 
-            <button class="btn" style="margin-bottom: 30px;">+ Добавить новую услугу</button>
+            <button class="btn" style="margin-bottom: 30px;" onclick="svcOpenForm()">+ Добавить новую услугу</button>
 
-            <!-- Пример услуги 1 -->
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <h3 class="card-title">Индивидуальная консультация</h3>
-                        <p class="card-meta">60 минут • 3 000 ₽</p>
+            <div class="card svc-form" id="svcForm" style="display: none; margin-bottom: 30px;">
+                <h3 class="svc-form-title" id="svcFormTitle">Новая услуга</h3>
+                <div class="form-group">
+                    <label class="form-label">Название *</label>
+                    <input type="text" class="form-input" id="svcTitle" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Описание</label>
+                    <textarea class="form-textarea" id="svcDescription" maxlength="5000"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Цена, ₽ *</label>
+                        <input type="number" class="form-input" id="svcPrice" min="0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Длительность, минут *</label>
+                        <input type="number" class="form-input" id="svcDuration" min="15" max="480" step="5" value="60">
                     </div>
                 </div>
-                <p class="card-description">
-                    Личная встреча с психологом для работы с вашими запросами. Подходит для решения конкретных жизненных
-                    ситуаций, работы с эмоциями и личностного роста.
-                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Формат *</label>
+                        <select class="form-select" id="svcFormat">
+                            <option value="both">Онлайн и очно</option>
+                            <option value="online">Только онлайн</option>
+                            <option value="offline">Только очно</option>
+                        </select>
+                    </div>
+                    <div class="form-group svc-checks">
+                        <label><input type="checkbox" id="svcIsActive" checked> Показывать на сайте</label>
+                        <label><input type="checkbox" id="svcIsDemo"> Демо-услуга (не видна клиентам)</label>
+                    </div>
+                </div>
                 <div class="card-actions">
-                    <button class="btn btn-small">Редактировать</button>
-                    <button class="btn btn-small btn-danger">Удалить</button>
+                    <button class="btn btn-small" id="svcSaveBtn" onclick="svcSave()">Сохранить</button>
+                    <button class="btn btn-small btn-danger" onclick="svcCloseForm()">Отмена</button>
                 </div>
             </div>
 
-            <!-- Пример услуги 2 -->
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <h3 class="card-title">Коучинг-сессия</h3>
-                        <p class="card-meta">90 минут • 5 000 ₽</p>
-                    </div>
-                </div>
-                <p class="card-description">
-                    Структурированная работа над достижением конкретных целей. Определение приоритетов, создание плана
-                    действий и поддержка на пути к результату.
-                </p>
-                <div class="card-actions">
-                    <button class="btn btn-small">Редактировать</button>
-                    <button class="btn btn-small btn-danger">Удалить</button>
-                </div>
-            </div>
-
-            <!-- Пример услуги 3 -->
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <h3 class="card-title">Подготовка к ЕГЭ</h3>
-                        <p class="card-meta">120 минут • 4 000 ₽</p>
-                    </div>
-                </div>
-                <p class="card-description">
-                    Комплексная подготовка к сдаче единого государственного экзамена. Работа с учебным материалом,
-                    тренировка навыков сдачи экзамена и снижение тревожности.
-                </p>
-                <div class="card-actions">
-                    <button class="btn btn-small">Редактировать</button>
-                    <button class="btn btn-small btn-danger">Удалить</button>
-                </div>
-            </div>
+            <div id="svcList"><div class="empty-state">Загрузка…</div></div>
         </div>
 
         <!-- ВКЛАДКА: ОТЗЫВЫ -->
