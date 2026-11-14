@@ -4,6 +4,8 @@ import (
 	"elena-backend/internal/config"
 	"fmt"
 	"html"
+	"net/url"
+	"strings"
 	"time"
 
 	gomail "gopkg.in/gomail.v2"
@@ -23,6 +25,36 @@ const colorPrimary = "#385C8E"
 const colorBg = "#FAF8F4"
 const colorText = "#2B2B2B"
 const colorTextMuted = "#6A6A6A"
+
+// calendarLink генерирует ссылку-приглашение в Google Calendar.
+// Одновременно прикладываем .ics как data: URI — он открывается стандартным календарём
+// на iOS/Android при клике.
+func calendarLink(d time.Time, durationMin int, title, location, description string) string {
+	if durationMin <= 0 {
+		durationMin = 60
+	}
+	fmt := func(t time.Time) string { return t.UTC().Format("20060102T150405Z") }
+	start := fmt(d)
+	end := fmt(d.Add(time.Duration(durationMin) * time.Minute))
+	esc := func(s string) string {
+		s = strings.ReplaceAll(s, `\`, `\\`)
+		s = strings.ReplaceAll(s, `
+`, `\n`)
+		s = strings.ReplaceAll(s, `,`, `\,`)
+		s = strings.ReplaceAll(s, `;`, `\;`)
+		return s
+	}
+	icsBody := "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//ekosta.ru//RU\r\n" +
+		"BEGIN:VEVENT\r\n" +
+		"DTSTART:" + start + "\r\n" +
+		"DTEND:" + end + "\r\n" +
+		"SUMMARY:" + esc(title) + "\r\n" +
+		"LOCATION:" + esc(location) + "\r\n" +
+		"DESCRIPTION:" + esc(description) + "\r\n" +
+		"END:VEVENT\r\nEND:VCALENDAR"
+	dataURI := "data:text/calendar;charset=utf-8," + url.PathEscape(icsBody)
+	return dataURI
+}
 
 func emailShell(preheader, bodyHTML string) string {
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -96,6 +128,9 @@ type BookingData struct {
 	FirstName       string
 	AppointmentDate time.Time
 	CancelURL       string
+	ServiceTitle    string
+	DurationMin     int
+	IsOnline        bool
 }
 
 func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
@@ -109,6 +144,12 @@ func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
 		d.FirstName, date, d.CancelURL,
 	)
 
+	location := "г. Екатеринбург, ул. Уральских рабочих 67"
+	if d.IsOnline {
+		location = "Онлайн"
+	}
+	icalHref := calendarLink(d.AppointmentDate, d.DurationMin, "Психолог", location, d.ServiceTitle)
+
 	body := fmt.Sprintf(`
 		<div style="font-family:%s; font-size:20px; font-weight:600; color:%s; margin-bottom:16px;">Вы записаны на приём</div>
 		<div style="font-family:%s; font-size:15px; color:%s; line-height:1.7;">
@@ -120,12 +161,14 @@ func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
 			Если планы изменятся, вы можете отменить запись по кнопке ниже.
 		</div>
 		%s
+		%s
 	`,
 		fontHeading, colorText,
 		fontBody, colorTextMuted, html.EscapeString(d.FirstName),
 		infoBox(fmt.Sprintf("<strong>Дата и время:</strong> %s", html.EscapeString(date))),
 		fontBody, colorTextMuted,
 		emailButton(d.CancelURL, "Отменить запись"),
+		emailButton(icalHref, "Добавить в календарь"),
 	)
 
 	htmlBody := emailShell(fmt.Sprintf("Вы записаны на приём %s к Елене", date), body)
@@ -134,10 +177,13 @@ func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
 }
 
 type RescheduleData struct {
-	FirstName string
-	OldDate   time.Time
-	NewDate   time.Time
-	CancelURL string
+	FirstName    string
+	OldDate      time.Time
+	NewDate      time.Time
+	CancelURL    string
+	ServiceTitle string
+	DurationMin  int
+	IsOnline     bool
 }
 
 func (m *Mailer) SendRescheduleNotice(to string, d RescheduleData) error {
@@ -152,6 +198,12 @@ func (m *Mailer) SendRescheduleNotice(to string, d RescheduleData) error {
 		d.FirstName, oldDate, newDate, d.CancelURL,
 	)
 
+	locationR := "г. Екатеринбург, ул. Уральских рабочих 67"
+	if d.IsOnline {
+		locationR = "Онлайн"
+	}
+	icalHrefR := calendarLink(d.NewDate, d.DurationMin, "Психолог", locationR, d.ServiceTitle)
+
 	body := fmt.Sprintf(`
 		<div style="font-family:%s; font-size:20px; font-weight:600; color:%s; margin-bottom:16px;">Запись перенесена</div>
 		<div style="font-family:%s; font-size:15px; color:%s; line-height:1.7;">
@@ -163,12 +215,14 @@ func (m *Mailer) SendRescheduleNotice(to string, d RescheduleData) error {
 			Если новое время вам не подходит, вы можете отменить запись по кнопке ниже.
 		</div>
 		%s
+		%s
 	`,
 		fontHeading, colorText,
 		fontBody, colorTextMuted, html.EscapeString(d.FirstName), html.EscapeString(oldDate),
 		infoBox(fmt.Sprintf("<strong>Новая дата и время:</strong> %s", html.EscapeString(newDate))),
 		fontBody, colorTextMuted,
 		emailButton(d.CancelURL, "Отменить запись"),
+		emailButton(icalHrefR, "Добавить в календарь"),
 	)
 
 	htmlBody := emailShell(fmt.Sprintf("Ваша запись перенесена на %s", newDate), body)
@@ -180,35 +234,58 @@ type CancellationData struct {
 	FirstName       string
 	AppointmentDate time.Time
 	Refund          bool
+	ManualRefund    bool   // возврат делается вручную через ЮKassa
+	ManualPayment   bool   // оплата наличными / переводом
 	DeadlineHours   int
 	StaffInitiated  bool
+	AmountKopeks    int64
 }
 
 func (m *Mailer) SendCancellationConfirmation(to string, d CancellationData) error {
 	date := d.AppointmentDate.Format("02.01.2006 в 15:04")
 
-	var refundNote string
-	if d.Refund {
-		refundNote = "Оплата будет возвращена в течение нескольких рабочих дней."
-	} else {
-		refundNote = fmt.Sprintf(
+	// Выбираем текст блока об оплате
+	var refundNote, refundNotePlain string
+	switch {
+	case d.StaffInitiated && d.Refund:
+		amtStr := ""
+		if d.AmountKopeks > 0 {
+			amtStr = fmt.Sprintf("%.2f", float64(d.AmountKopeks)/100)
+			refundNotePlain = fmt.Sprintf("Оплата %s ₽ вернётся на вашу карту в течение нескольких рабочих дней.", amtStr)
+			refundNote = fmt.Sprintf("Оплата <strong>%s ₽</strong> вернётся на вашу карту в течение нескольких рабочих дней.", html.EscapeString(amtStr))
+		} else {
+			refundNotePlain = "Оплата будет возвращена в течение нескольких рабочих дней."
+			refundNote = refundNotePlain
+		}
+	case d.StaffInitiated && d.ManualRefund:
+		refundNotePlain = "С вами свяжутся, чтобы вернуть оплату."
+		refundNote = refundNotePlain
+	case d.StaffInitiated && !d.Refund && !d.ManualRefund && d.AmountKopeks == 0:
+		refundNotePlain = "Запись не была оплачена, деньги не списывались."
+		refundNote = refundNotePlain
+	case !d.StaffInitiated && d.Refund:
+		refundNotePlain = "Оплата будет возвращена в течение нескольких рабочих дней."
+		refundNote = refundNotePlain
+	default:
+		refundNotePlain = fmt.Sprintf(
 			"К сожалению, отмена произошла менее чем за %d ч. до приёма — средства не возвращаются.",
 			d.DeadlineHours,
 		)
+		refundNote = html.EscapeString(refundNotePlain)
 	}
 
 	var subject, introPlain, introHTML string
 	if d.StaffInitiated {
-		subject = "Ваша запись к Елене отменена"
-		introPlain = fmt.Sprintf("Запись на приём %s к Елене была отменена.", date)
-		introHTML = fmt.Sprintf("Запись на приём <strong>%s</strong> к Елене Костаревой была отменена.", html.EscapeString(date))
+		subject = "Ваша запись отменена"
+		introPlain = fmt.Sprintf("%s, здравствуйте!\n\nВаша запись была отменена.", d.FirstName)
+		introHTML = fmt.Sprintf("%s, здравствуйте!<br><br>Ваша запись была отменена.", html.EscapeString(d.FirstName))
 	} else {
 		subject = fmt.Sprintf("%s, вы отменили запись к Елене", d.FirstName)
 		introPlain = fmt.Sprintf("Вы отменили запись на приём %s к Елене.", date)
 		introHTML = fmt.Sprintf("Вы отменили запись на приём <strong>%s</strong> к Елене Костаревой.", html.EscapeString(date))
 	}
 
-	plainText := fmt.Sprintf("%s\n\n%s", introPlain, refundNote)
+	plainText := fmt.Sprintf("%s\n\n%s\n\nВы можете выбрать другое удобное время на сайте: https://ekosta.ru/\n\nОстались вопросы? Напишите на e-kosta@yandex.ru", introPlain, refundNotePlain)
 
 	body := fmt.Sprintf(`
 		<div style="font-family:%s; font-size:20px; font-weight:600; color:%s; margin-bottom:16px;">Запись отменена</div>
@@ -216,10 +293,20 @@ func (m *Mailer) SendCancellationConfirmation(to string, d CancellationData) err
 			%s
 		</div>
 		%s
+		<div style="font-family:%s; font-size:14px; color:%s; line-height:1.7; margin-bottom:16px;">
+			Вы можете выбрать другое удобное время на сайте.
+		</div>
+		%s
+		<div style="font-family:%s; font-size:12px; color:%s; line-height:1.6; margin-top:16px;">
+			Остались вопросы? Напишите на <a href="mailto:e-kosta@yandex.ru" style="color:%s;">e-kosta@yandex.ru</a>
+		</div>
 	`,
 		fontHeading, colorText,
 		fontBody, colorTextMuted, introHTML,
-		infoBox(html.EscapeString(refundNote)),
+		infoBox(refundNote),
+		fontBody, colorTextMuted,
+		emailButton("https://ekosta.ru/", "Записаться снова"),
+		fontBody, colorTextMuted, colorPrimary,
 	)
 
 	htmlBody := emailShell("Запись отменена", body)

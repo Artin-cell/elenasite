@@ -215,7 +215,7 @@ function renderBookings(list) {
         const service = appt.service || {};
         const { datePart, timePart } = formatDateTime(appt.starts_at);
         const statusInfo = STATUS_LABELS[appt.status] || { text: appt.status, cls: 'status-pending' };
-        const isRefundProcessing = appt.refund_status === 'pending' && appt.payment_status !== 'refunded';
+        const isRefundProcessing = (appt.refund_status === 'pending' || appt.refund_status === 'manual_pending') && appt.payment_status !== 'refunded';
         const paymentLabelBase = isRefundProcessing
             ? PAYMENT_LABELS['refund_processing']
             : (PAYMENT_LABELS[appt.payment_status] || appt.payment_status);
@@ -231,7 +231,7 @@ function renderBookings(list) {
                 <td>${datePart}<br>${timePart}</td>
                 <td>${appt.format === 'online' ? 'Онлайн' : 'Очно'}</td>
                 <td>
-                    <span class="status ${isRefundProcessing ? 'status-refund' : statusInfo.cls}">${isRefundProcessing ? '⏳ Возврат оформляется' : statusInfo.text}</span><br>
+                    <span class="status ${isRefundProcessing ? 'status-refund' : statusInfo.cls}">${isRefundProcessing ? (appt.refund_status === 'manual_pending' ? '⏳ Ожидает возврата в ЮKassa' : '⏳ Возврат оформляется') : statusInfo.text}</span><br>
                     <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(paymentLabel)}</span>
                 </td>
                 <td>
@@ -253,7 +253,24 @@ async function cancelBooking(id) {
     if (isPaid && appt.payment_id) {
         const choice = await askRefundChoice(appt);
         if (!choice) return;
-        refund = choice === 'refund';
+        if (choice === 'manual_refund') {
+            // Открываем ЮKassa, одновременно отменяем запись с пометкой manual_pending
+            window.open('https://yookassa.ru/my/payments', '_blank', 'noopener');
+            bookingActionBusy = true;
+            try {
+                await apiFetch(`/admin/appointments/${id}/cancel`, {
+                    method: 'POST',
+                    body: JSON.stringify({ refund: false, manual_refund: true }),
+                });
+            } catch (err) {
+                alert('Не удалось отменить запись: ' + err.message);
+            } finally {
+                bookingActionBusy = false;
+                loadBookings();
+            }
+            return;
+        }
+        refund = false; // keep — отмена без возврата
     } else if (isPaid) {
         if (!confirm('Эта запись оплачена вручную (не через ЮKassa), поэтому вернуть деньги автоматически нельзя.\n\nОтменить запись? Деньги придётся вернуть клиенту самостоятельно.')) return;
     } else {
@@ -267,11 +284,7 @@ async function cancelBooking(id) {
             body: JSON.stringify({ refund }),
         });
         if (res && res.refunded) {
-            alert(res.refund_status === 'succeeded'
-                ? 'Запись отменена, деньги возвращены клиенту.'
-                : 'Запись отменена. Возврат принят ЮKassa, деньги придут клиенту в течение нескольких рабочих дней.');
-        } else if (isPaid) {
-            alert('Запись отменена без возврата денег.');
+            // авто-возврат (refund=true) сейчас не используется, оставлено для совместимости
         }
     } catch (err) {
         alert('Не удалось отменить запись: ' + err.message);
@@ -624,7 +637,7 @@ function bookingActionsHtml(appt) {
     return parts.join(' ');
 }
 
-// Окно «Вернуть клиенту деньги?». Возвращает 'refund', 'keep' или null (не отменять).
+// Окно «Вернуть клиенту деньги?». Возвращает 'manual_refund', 'keep' или null (не отменять).
 function askRefundChoice(appt) {
     return new Promise(resolve => {
         const client = appt.client || {};
@@ -646,12 +659,11 @@ function askRefundChoice(appt) {
                 ${appt.amount_kopeks > 0 ? `<br>Оплачено: ${formatRubles(appt.amount_kopeks)}` : ''}
             </div>
             <div style="font-size:13px;color:#666;line-height:1.5;margin-bottom:16px;">
-                «Да» — запись отменится, деньги вернутся клиенту через ЮKassa, клиент получит письмо.<br>
-                «Нет» — запись отменится без возврата денег.
+                Выберите действие:
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;">
-                <button type="button" class="btn" data-choice="refund">Да, вернуть деньги</button>
-                <button type="button" class="btn btn-danger" data-choice="keep">Нет, отменить без возврата</button>
+                <button type="button" class="btn" data-choice="manual_refund">Перейти в ЮKassa для возврата</button>
+                <button type="button" class="btn btn-danger" data-choice="keep">Отменить без возврата</button>
                 <button type="button" class="btn" data-choice="back" style="background:#eee;color:#333;">Не отменять</button>
             </div>
         `;

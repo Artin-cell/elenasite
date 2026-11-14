@@ -337,6 +337,7 @@ func (s *AppointmentService) NotifyRefunded(ctx context.Context, apptID uuid.UUI
 		Refund:          true,
 		DeadlineHours:   s.cancellationDeadlineHours,
 		StaffInitiated:  true,
+		AmountKopeks:    appt.AmountKopeks,
 	})
 }
 
@@ -433,6 +434,7 @@ func (s *AppointmentService) ConfirmCancellation(ctx context.Context, token stri
 		AppointmentDate: appt.StartsAt,
 		Refund:          needsRefund,
 		DeadlineHours:   s.cancellationDeadlineHours,
+		AmountKopeks:    appt.AmountKopeks,
 	}); err != nil {
 		fmt.Printf("warn: cancellation email for %s: %v\n", appt.ID, err)
 	}
@@ -534,10 +536,13 @@ func (s *AppointmentService) reissueTokenAndNotifyReschedule(ctx context.Context
 	cancelURL := fmt.Sprintf("%s/?cancel_token=%s", s.baseURL, rawToken)
 
 	return s.mailer.SendRescheduleNotice(appt.Client.Email, mailer.RescheduleData{
-		FirstName: appt.Client.FirstName,
-		OldDate:   oldStart,
-		NewDate:   newStart,
-		CancelURL: cancelURL,
+		FirstName:    appt.Client.FirstName,
+		OldDate:      oldStart,
+		NewDate:      newStart,
+		CancelURL:    cancelURL,
+		ServiceTitle: appt.Service.Title,
+		DurationMin:  int(appt.EndsAt.Sub(appt.StartsAt) / time.Minute),
+		IsOnline:     appt.Format == models.AppointmentOnline,
 	})
 }
 
@@ -567,6 +572,9 @@ func (s *AppointmentService) issueTokenAndNotify(ctx context.Context, appt *mode
 		FirstName:       client.FirstName,
 		AppointmentDate: appt.StartsAt,
 		CancelURL:       cancelURL,
+		ServiceTitle:    appt.Service.Title,
+		DurationMin:     int(appt.EndsAt.Sub(appt.StartsAt) / time.Minute),
+		IsOnline:        appt.Format == models.AppointmentOnline,
 	})
 }
 
