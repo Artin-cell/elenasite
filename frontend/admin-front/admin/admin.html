@@ -278,8 +278,12 @@
                 <label class="bk-label">С <input type="date" id="bkFrom" class="form-input" onchange="bkApplyFilters()"></label>
                 <label class="bk-label">По <input type="date" id="bkTo" class="form-input" onchange="bkApplyFilters()"></label>
                 <button class="btn btn-small" onclick="bkResetFilters()">Сбросить</button>
+                <button class="btn btn-small" id="bkRefreshBtn" onclick="bkRefresh()">Обновить</button>
             </div>
-            <div class="bk-summary" id="bkSummary"></div>
+            <div class="bk-summary-row">
+                <div class="bk-summary" id="bkSummary"></div>
+                <div class="bk-updated" id="bkUpdated"></div>
+            </div>
                             <div class="table-responsive">
                 <table class="admin-table">
                     <thead>
