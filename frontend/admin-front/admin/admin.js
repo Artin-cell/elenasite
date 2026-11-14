@@ -215,7 +215,7 @@ function renderBookings(list) {
         const service = appt.service || {};
         const { datePart, timePart } = formatDateTime(appt.starts_at);
         const statusInfo = STATUS_LABELS[appt.status] || { text: appt.status, cls: 'status-pending' };
-        const isRefundProcessing = appt.payment_status === 'refund_processing';
+        const isRefundProcessing = appt.refund_status === 'pending' && appt.payment_status !== 'refunded';
         const paymentLabelBase = isRefundProcessing
             ? PAYMENT_LABELS['refund_processing']
             : (PAYMENT_LABELS[appt.payment_status] || appt.payment_status);
