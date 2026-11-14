@@ -83,6 +83,8 @@ type Appointment struct {
 	PaymentStatus string      `db:"payment_status" json:"payment_status"`
 	PaymentID     string      `db:"payment_id" json:"payment_id"`
 	AmountKopeks  int64       `db:"amount_kopeks" json:"amount_kopeks"`
+	RefundID      string      `db:"refund_id" json:"refund_id"`
+	RefundStatus  string      `db:"refund_status" json:"refund_status"`
 
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`

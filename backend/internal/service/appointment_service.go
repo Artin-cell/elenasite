@@ -304,6 +304,9 @@ func (s *AppointmentService) ConfirmPayment(ctx context.Context, apptID uuid.UUI
 			if refundErr != nil {
 				return fmt.Errorf("платёж получен после отмены записи; возврат не выполнен: %w", refundErr)
 			}
+			if err := s.apptRepo.SetRefund(ctx, apptID, refund.RefundID, refund.Status); err != nil {
+				fmt.Printf("warn: save refund for %s: %v\n", apptID, err)
+			}
 			if refund.Status == "succeeded" {
 				return s.apptRepo.UpdatePaymentStatus(ctx, apptID, models.PaymentStatusRefunded)
 			}
@@ -404,6 +407,9 @@ func (s *AppointmentService) ConfirmCancellation(ctx context.Context, token stri
 		refundStatus = refund.Status
 		if refundStatus != "succeeded" && refundStatus != "pending" {
 			return fmt.Errorf("возврат не принят: статус %s", refundStatus)
+		}
+		if err := s.apptRepo.SetRefund(ctx, appt.ID, refund.RefundID, refund.Status); err != nil {
+			fmt.Printf("warn: save refund for %s: %v\n", appt.ID, err)
 		}
 	}
 

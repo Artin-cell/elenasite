@@ -63,6 +63,9 @@ func (s *AppointmentService) AdminCancel(ctx context.Context, apptID uuid.UUID, 
 		}
 		result.Refunded = true
 		result.RefundStatus = info.Status
+		if err := s.apptRepo.SetRefund(ctx, apptID, info.RefundID, info.Status); err != nil {
+			log.Printf("admin cancel: не удалось сохранить данные возврата по записи %s: %v", apptID, err)
+		}
 	}
 
 	if err := s.cancelAppointmentStatus(ctx, appt); err != nil {

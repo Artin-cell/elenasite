@@ -72,6 +72,9 @@ func (h *Handler) YooKassaWebhook(c *gin.Context) {
 
 	if isRefundEvent {
 		if payload.Event == "refund.succeeded" {
+			if err := h.apptRepo.MarkRefundSucceeded(c.Request.Context(), apptID); err != nil {
+				log.Printf("yookassa webhook: mark refund succeeded: %v", err)
+			}
 			if appt, getErr := h.apptRepo.GetByID(c.Request.Context(), apptID); getErr == nil && appt.PaymentStatus == models.PaymentStatusRefunded {
 				c.Status(http.StatusOK)
 				return
