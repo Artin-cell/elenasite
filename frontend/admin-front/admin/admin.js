@@ -65,10 +65,11 @@ const STATUS_LABELS = {
 };
 
 const PAYMENT_LABELS = {
-    pending:  'оплата ожидается',
-    paid:     'оплачено',
-    failed:   'оплата не прошла',
-    refunded: 'возврат оформлен',
+    pending:           'оплата ожидается',
+    paid:              'оплачено',
+    failed:            'оплата не прошла',
+    refunded:          'возврат оформлен',
+    refund_processing: 'возврат оформляется',
 };
 
 // ===== ЗАПИСИ КЛИЕНТОВ =====
@@ -214,7 +215,11 @@ function renderBookings(list) {
         const service = appt.service || {};
         const { datePart, timePart } = formatDateTime(appt.starts_at);
         const statusInfo = STATUS_LABELS[appt.status] || { text: appt.status, cls: 'status-pending' };
-        const paymentLabel = (PAYMENT_LABELS[appt.payment_status] || appt.payment_status) + paymentSuffix(appt);
+        const isRefundProcessing = appt.payment_status === 'refund_processing';
+        const paymentLabelBase = isRefundProcessing
+            ? PAYMENT_LABELS['refund_processing']
+            : (PAYMENT_LABELS[appt.payment_status] || appt.payment_status);
+        const paymentLabel = paymentLabelBase + paymentSuffix(appt);
 
         return `
             <tr data-id="${appt.id}">
@@ -226,7 +231,7 @@ function renderBookings(list) {
                 <td>${datePart}<br>${timePart}</td>
                 <td>${appt.format === 'online' ? 'Онлайн' : 'Очно'}</td>
                 <td>
-                    <span class="status ${statusInfo.cls}">${statusInfo.text}</span><br>
+                    <span class="status ${isRefundProcessing ? 'status-refund' : statusInfo.cls}">${isRefundProcessing ? '⏳ Возврат оформляется' : statusInfo.text}</span><br>
                     <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(paymentLabel)}</span>
                 </td>
                 <td>
@@ -578,10 +583,19 @@ function formatRubles(kopeks) {
 }
 
 function paymentSuffix(appt) {
-    let suffix = '';
-    if (appt.amount_kopeks > 0) suffix += ' · ' + formatRubles(appt.amount_kopeks);
-    if (appt.payment_mode === 'prepay_50') suffix += ' · предоплата 50%';
-    return suffix;
+    if (appt.payment_mode === 'prepay_50' && appt.amount_kopeks > 0) {
+        const prepay   = appt.amount_kopeks;
+        const fullPrice = prepay * 2;
+        const remainder = fullPrice - prepay;
+        let s = ' · предоплата ' + formatRubles(prepay);
+        if (appt.payment_status !== 'paid' && appt.payment_status !== 'refunded') {
+            // оплата ещё не прошла — показываем только сумму предоплаты
+        } else if (appt.payment_status === 'paid') {
+            s += ' · остаток при визите ' + formatRubles(remainder);
+        }
+        return s;
+    }
+    return appt.amount_kopeks > 0 ? ' · ' + formatRubles(appt.amount_kopeks) : '';
 }
 
 function bookingBtn(label, handler, danger) {

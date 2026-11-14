@@ -596,3 +596,4 @@
 .bk-slot.bk-slot-current { background: #e8f4fd; color: #2980b9; cursor: default; border-color: #b8daf5; }
 .bk-rs-actions { display: flex; gap: 10px; margin-bottom: 8px; }
 .bk-rs-error { font-size: 13px; color: #c0392b; min-height: 18px; margin-top: 8px; }
+.status-refund { background: #fff3cd; color: #856404; }
