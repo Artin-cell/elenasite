@@ -148,6 +148,7 @@ func (s *AppointmentService) cancelAppointmentStatus(ctx context.Context, appt *
 		if !changed {
 			return ErrStatusChanged
 		}
+		s.invalidateCancelToken(ctx, appt.ID)
 		return nil
 	}
 
@@ -155,6 +156,7 @@ func (s *AppointmentService) cancelAppointmentStatus(ctx context.Context, appt *
 	for attempt := 0; attempt < 3; attempt++ {
 		err := s.apptRepo.UpdateStatus(ctx, appt.ID, models.StatusCancelled)
 		if err == nil {
+			s.invalidateCancelToken(ctx, appt.ID)
 			return nil
 		}
 		if errors.Is(err, repository.ErrInvalidStatusTransition) {
@@ -164,4 +166,12 @@ func (s *AppointmentService) cancelAppointmentStatus(ctx context.Context, appt *
 		time.Sleep(time.Duration(attempt+1) * 200 * time.Millisecond)
 	}
 	return lastErr
+}
+
+// invalidateCancelToken гасит действующий токен отмены записи.
+// Ошибка не прерывает основную операцию — только логируется.
+func (s *AppointmentService) invalidateCancelToken(ctx context.Context, apptID uuid.UUID) {
+	if err := s.tokenRepo.InvalidateActiveForAppointment(ctx, apptID); err != nil {
+		log.Printf("invalidateCancelToken %s: %v", apptID, err)
+	}
 }

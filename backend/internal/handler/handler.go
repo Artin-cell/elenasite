@@ -668,6 +668,15 @@ func (h *Handler) AdminUpdateStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось изменить статус"})
 		return
 	}
+	switch allowedStatus {
+	case models.StatusCancelled, models.StatusCompleted, models.StatusNoShow:
+		// Запись больше не активна: ссылка отмены из письма не должна считаться действующей.
+		if h.tokenRepo != nil {
+			if err := h.tokenRepo.InvalidateActiveForAppointment(c.Request.Context(), id); err != nil {
+				log.Printf("admin update status %s: invalidate cancel token: %v", id, err)
+			}
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
