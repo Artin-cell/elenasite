@@ -9,11 +9,33 @@ function acceptCookies() {
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const SLOT_TIMES = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+const SLOT_MINUTES = { '10:00':600,'11:00':660,'12:00':720,'13:00':780,'14:00':840,'15:00':900,'16:00':960,'17:00':1020,'18:00':1080,'19:00':1140 };
+const WORK_END_MIN = 20 * 60; // 20:00
+
 let cDate = new Date(), selDay = null, selectedTimeStr = "";
 let busyByDate = {};
+let serviceDurations = {}; // id -> duration_min
+
+function getSelectedDuration() {
+    const sel = document.getElementById('bService');
+    if (!sel) return 60;
+    return serviceDurations[sel.value] || 60;
+}
 
 function formatDateKey(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+// 3.4: «сегодня» и прошедшие часы по Екатеринбургу
+function ekbNow() {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Yekaterinburg',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', hourCycle: 'h23',
+    });
+    const parts = fmt.formatToParts(new Date());
+    const g = t => parts.find(x => x.type === t).value;
+    return { dateKey: `${g('year')}-${g('month')}-${g('day')}`, hour: parseInt(g('hour'), 10) };
 }
 
 async function fetchAvailability(y, m) {
@@ -40,7 +62,8 @@ function renderCal() {
     g.appendChild(el);
   });
 
-  const first = new Date(y, m, 1), startDay = (first.getDay() + 6) % 7, dim = new Date(y, m + 1, 0).getDate(), today = new Date();
+  const first = new Date(y, m, 1), startDay = (first.getDay() + 6) % 7, dim = new Date(y, m + 1, 0).getDate();
+  const ekb = ekbNow(), todayKey = ekb.dateKey;
 
   for (let i = 0; i < startDay; i++) {
     const el = document.createElement('div');
@@ -56,9 +79,9 @@ function renderCal() {
     const dateKey = formatDateKey(y, m, d);
     const isFull = (busyByDate[dateKey] || []).length >= SLOT_TIMES.length;
 
-    if ((td < today && td.toDateString() !== today.toDateString()) || isFull) {
+    if (dateKey < todayKey || isFull) {
       el.classList.add('dis');
-    } else if (td.toDateString() === today.toDateString()) {
+    } else if (dateKey === todayKey) {
       el.classList.add('tod');
       el.addEventListener('click', () => setDateClick(el, d, m, y));
     } else {
@@ -88,11 +111,21 @@ function renderTimeSlots(dateKey) {
   const grid = document.getElementById('timeGrid');
   grid.innerHTML = '';
 
+  const ekb = ekbNow();
+  const dur = getSelectedDuration();
   SLOT_TIMES.forEach(t => {
     const el = document.createElement('div');
     el.className = 'tsl';
     el.textContent = t;
-    if (busy.includes(t)) {
+    const startMin = SLOT_MINUTES[t];
+    const endMin = startMin + dur;
+    // 3.2: услуга выходит за рабочий день
+    const noFit = endMin > WORK_END_MIN;
+    // 3.2: интервал записи задевает занятый/закрытый час
+    const overlaps = !noFit && SLOT_TIMES.some(u => busy.includes(u) && SLOT_MINUTES[u] >= startMin && SLOT_MINUTES[u] < endMin);
+    // 3.4: прошедший час сегодня по Екатеринбургу
+    const pastHour = dateKey === ekb.dateKey && startMin < (ekb.hour + 1) * 60;
+    if (busy.includes(t) || noFit || overlaps || pastHour) {
       el.classList.add('busy');
     } else {
       el.addEventListener('click', () => selT(el));
@@ -112,6 +145,30 @@ function chMon(dir) {
 }
 
 fetchAvailability(cDate.getFullYear(), cDate.getMonth());
+
+// Загрузить длительности услуг
+(async function loadServiceDurations() {
+    try {
+        const r = await fetch('/api/v1/services');
+        const list = await r.json();
+        for (const svc of list) {
+            if (svc.id && svc.duration_min) serviceDurations[svc.id] = svc.duration_min;
+        }
+        if (selDay) renderTimeSlots(formatDateKey(selDay.y, selDay.m, selDay.d));
+    } catch (e) { /* без длительностей работаем как раньше */ }
+})();
+
+// 3.2: при смене услуги — перестроить часы
+(function attachServiceChange() {
+    const sel = document.getElementById('bService');
+    if (!sel) return;
+    sel.addEventListener('change', () => {
+        selectedTimeStr = '';
+        const tl = document.getElementById('timeLabel');
+        if (tl) tl.textContent = '';
+        if (selDay) renderTimeSlots(formatDateKey(selDay.y, selDay.m, selDay.d));
+    });
+})();
 
 function selT(el) {
   if (el.classList.contains('busy')) return;
