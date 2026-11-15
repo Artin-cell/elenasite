@@ -456,90 +456,41 @@
 
       <div class="booking-form">
 
-        <!--  заглушка -->
-        <div class="plat-card">
-          <div class="plat-name">Запись осуществляется любым из указанных ниже способов</div>
-          <div class="about-para">Выберите удобный способ связи ниже, чтобы записаться на консультацию. Мы ответим в
-            ближайшее время, поможем подобрать удобную дату и время и подтвердим вашу запись. Если у вас есть вопросы,
-            мы с удовольствием на них ответим.</div>
-        </div>
-
-        <div class="contacts-grid">
-
-          <div class="foot-ct-item"><a href="tel:+79089012707" class="fci-v">+7 908 901-27-07</a></div>
-
-
-          <div class="foot-ct-item"><a href="mailto:e-kosta@yandex.ru" target="_blank" class="fci-v">E-KOSTA@YA.RU</a>
-          </div>
-
-          <div class="foot-ct-item"><a href="https://vk.ru/ekostapsy" target="_blank" class="fci-v">ВКонтакте</a></div>
-
-
-          <div class="foot-ct-item"><a href="https://t.me/psychologistekosta" target="_blank" class="fci-v">Telegram</a>
-          </div>
-        </div>
 
 
 
 
-        <!--
+        <div class="bf-grid">
+          <!-- Левая колонка: контакты, услуга -->
+          <div class="bf-col bf-col-left">
 
-
-
-
-        <div class="booking-grid">
-          <div class="fg-title">
             <div class="form-ttl">Контактные данные</div>
-          </div>
 
-          <div class="fg fg-name">
-            <label class="fl">Ваше ФИО *</label>
-            <input class="fi-inp" type="text" id="bName" placeholder="Введите ФИО">
-          </div>
-
-          <div class="form-row2 fg-contacts">
-            <div class="fg" style="margin-bottom: 0;">
-              <label class="fl">Номер телефона *</label>
-              <input class="fi-inp" type="tel" id="bPhone" placeholder="+7 (___) ___-__-__">
+            <div class="fg">
+              <label class="fl">Ваше ФИО *</label>
+              <input class="fi-inp" type="text" id="bName" placeholder="Введите ФИО">
             </div>
-            <div class="fg" style="margin-bottom: 0;">
-              <label class="fl">E-mail *</label>
-              <input class="fi-inp" type="email" id="bEmail" placeholder="example@mail.com">
-            </div>
-          </div>
 
-          <div class="fg fg-service">
-            <label class="fl">Выберите услугу *</label>
-            <select class="fi-sel" id="bService">
-              <option value="">-- Нажмите, чтобы выбрать --</option>
-              <option value="eb1f2196-b48f-41e6-9b53-264f94531103">Коучинг-сессия — 7 000 ₽</option>
-              <option value="f5a8894d-7bdf-4729-a1d9-34327b440f24">Психологическая подготовка к ЕГЭ, ГЭК и защитам ВКР —
-                6 000 ₽ / час</option>
-              <option value="b88124ea-cdb5-43cb-9cac-41f6886fb4af">Психологическое консультирование — 6 000 ₽, 1,5 часа
-              </option>
-              <option value="7584c686-59c0-43e4-8c58-a8f2d2728d05">Программа "НОВАЯ ГЛАВА" — 7 000 ₽ / час</option>
-              <option value="9d2bb3fe-0719-448c-bc94-b7dfd5030943">🧪 ТЕСТ — 1 ₽ (только для разработчика)</option>
-
-            </select>
-          </div>
-          <div class="fg fg-date">
-            <label class="fl">Дата приема * — <span id="dateLabel"
-                style="text-decoration: underline; font-weight: 500;">не
-                выбрана</span></label>
-            <div class="cal-nav">
-              <button class="cal-nav-btn" onclick="chMon(-1)">‹</button>
-              <span class="cal-month" id="calM"></span>
-              <button class="cal-nav-btn" onclick="chMon(1)">›</button>
-            </div>
-            <div class="cal-grid-f" id="calG"></div>
-          </div>
-
-          <div class="fg fg-time">
-            <label class="fl">Время сессии * <span id="timeLabel" style="font-weight: 600;"></span></label>
-            <div style="color: var(--text-muted); font-size: 12px; margin-bottom: 6px;">Время указано по Екатеринбургу (UTC+5, на 2 часа больше московского)</div>
-            <div class="time-grid" id="timeGrid">
-              <div style="grid-column: 1/-1; color: var(--text-muted); font-size: 13px;">Сначала выберите дату приёма
+            <div class="form-row2">
+              <div class="fg" style="margin-bottom:0">
+                <label class="fl">Номер телефона *</label>
+                <input class="fi-inp" type="tel" id="bPhone" placeholder="+7 (___) ___-__-__">
               </div>
+              <div class="fg" style="margin-bottom:0">
+                <label class="fl">E-mail *</label>
+                <input class="fi-inp" type="email" id="bEmail" placeholder="example@mail.com">
+              </div>
+            </div>
+
+            <div class="fg fg-service">
+              <label class="fl">Выберите услугу *</label>
+              <select class="fi-sel" id="bService">
+                <option value="">-- Нажмите, чтобы выбрать --</option>
+                <option value="eb1f2196-b48f-41e6-9b53-264f94531103" data-duration="60">Коучинг-сессия — 7 000 ₽</option>
+                <option value="f5a8894d-7bdf-4729-a1d9-34327b440f24" data-duration="60">Психологическая подготовка к ЕГЭ, ГЭК и защитам ВКР — 6 000 ₽ / час</option>
+                <option value="b88124ea-cdb5-43cb-9cac-41f6886fb4af" data-duration="90">Психологическое консультирование — 6 000 ₽, 1,5 часа</option>
+                <option value="7584c686-59c0-43e4-8c58-a8f2d2728d05" data-duration="60">Программа "НОВАЯ ГЛАВА" — 7 000 ₽ / час</option>
+              </select>
             </div>
 
             <div class="fg fg-format">
@@ -562,37 +513,56 @@
                 <button class="btn-style pay-opt on" onclick="selPay(this)">Полная оплата</button>
                 <button class="btn-style pay-opt" onclick="selPay(this)">Предоплата 50%</button>
               </div>
-
               <div class="cancel-hint">Бесплатная отмена или перенос бронирования за 12 часов до сессии</div>
             </div>
 
-            <div class="fg fg-soglasie" ;
-              style="margin: 16px 0; padding: 11px; background: #FAF8F4; border-radius: 0px; font-size: 13px; line-height: 1.5;">
+          </div><!-- /bf-col-left -->
+
+          <!-- Правая колонка: дата и время -->
+          <div class="bf-col bf-col-right">
+
+            <div class="form-ttl">Дата и время приёма</div>
+
+            <div class="fg fg-date">
+              <label class="fl">Дата приёма * — <span id="dateLabel" style="text-decoration:underline;font-weight:500;">не выбрана</span></label>
+              <div class="cal-nav">
+                <button class="cal-nav-btn" onclick="chMon(-1)">‹</button>
+                <span class="cal-month" id="calM"></span>
+                <button class="cal-nav-btn" onclick="chMon(1)">›</button>
+              </div>
+              <div class="cal-grid-f" id="calG"></div>
+            </div>
+
+            <div class="fg fg-time">
+              <label class="fl">Время сессии * <span id="timeLabel" style="font-weight:600;"></span></label>
+              <div class="bf-tz-hint">Время указано по Екатеринбургу (UTC+5, на 2 часа больше московского)</div>
+              <div class="time-grid" id="timeGrid">
+                <div style="grid-column:1/-1;color:var(--text-muted);font-size:13px;">Сначала выберите дату приёма</div>
+              </div>
+            </div>
+
+          </div><!-- /bf-col-right -->
+
+          <!-- Нижняя строка: согласие и кнопка -->
+          <div class="bf-footer">
+
+            <div class="fg fg-soglasie" style="margin:0 0 16px;">
               <label class="custom-check">
                 <input type="checkbox" id="consent-check" required>
-                <span>Я даю <a href="javascript:void(0)" onclick="openPersDataModal()"
-                    style="color: inherit; text-decoration: underline;">согласие на обработку персональных данных</a> 
-                    , ознакомлен с <a href="javascript:void(0)" onclick="openPolicyModal()"
-                    style="color: inherit; text-decoration: underline;">политикой конфиденциальности</a>
-                     и принимаю условия <a href="javascript:void(0)" onclick="openOfertaModal()"
-                    style="color: inherit; text-decoration: underline;">договора-оферты</a></span>
+                <span>Я даю <a href="javascript:void(0)" onclick="openPersDataModal()" style="color:inherit;text-decoration:underline;">согласие на обработку персональных данных</a>,
+                  ознакомлен с <a href="javascript:void(0)" onclick="openPolicyModal()" style="color:inherit;text-decoration:underline;">политикой конфиденциальности</a>
+                  и принимаю условия <a href="javascript:void(0)" onclick="openOfertaModal()" style="color:inherit;text-decoration:underline;">договора-оферты</a></span>
               </label>
             </div>
 
             <button class="btn-style fg-submit"
-              style="background: var(--primary) !important; color: var(--bg-card) !important; max-width: 100%;"
-              onclick="submitB()">Записаться на прием</button>
+              style="background:var(--primary)!important;color:var(--bg-card)!important;max-width:100%;"
+              onclick="submitB()">Записаться на приём</button>
 
-          </div>
+          </div><!-- /bf-footer -->
 
+        </div><!-- /bf-grid -->
 
-
-
-
-
-
-
-        </div> -->
       </div>
 
       <div id="s-formats" class="page-section">

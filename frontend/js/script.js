@@ -19,7 +19,11 @@ let serviceDurations = {}; // id -> duration_min
 function getSelectedDuration() {
     const sel = document.getElementById('bService');
     if (!sel) return 60;
-    return serviceDurations[sel.value] || 60;
+    // serviceDurations заполняется из API; fallback — data-duration на <option>
+    if (serviceDurations[sel.value]) return serviceDurations[sel.value];
+    const opt = sel.options[sel.selectedIndex];
+    const d = opt && parseInt(opt.dataset.duration, 10);
+    return d || 60;
 }
 
 function formatDateKey(y, m, d) {
