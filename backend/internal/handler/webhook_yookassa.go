@@ -72,15 +72,26 @@ func (h *Handler) YooKassaWebhook(c *gin.Context) {
 
 	if isRefundEvent {
 		if payload.Event == "refund.succeeded" {
+			// refund_status читаем до MarkRefundSucceeded: при ручном возврате
+			// (manual_pending) клиент уже получил письмо при отмене.
+			manualRefund := false
+			if appt, getErr := h.apptRepo.GetByID(c.Request.Context(), apptID); getErr == nil {
+				manualRefund = appt.RefundStatus == "manual_pending"
+				if appt.PaymentStatus == models.PaymentStatusRefunded {
+					if err := h.apptRepo.MarkRefundSucceeded(c.Request.Context(), apptID); err != nil {
+						log.Printf("yookassa webhook: mark refund succeeded: %v", err)
+					}
+					c.Status(http.StatusOK)
+					return
+				}
+			}
 			if err := h.apptRepo.MarkRefundSucceeded(c.Request.Context(), apptID); err != nil {
 				log.Printf("yookassa webhook: mark refund succeeded: %v", err)
 			}
-			if appt, getErr := h.apptRepo.GetByID(c.Request.Context(), apptID); getErr == nil && appt.PaymentStatus == models.PaymentStatusRefunded {
-				c.Status(http.StatusOK)
-				return
-			}
 			if err := h.apptRepo.UpdatePaymentStatus(c.Request.Context(), apptID, models.PaymentStatusRefunded); err != nil {
 				log.Printf("yookassa webhook: update status refunded: %v", err)
+			} else if manualRefund {
+				log.Printf("yookassa webhook: manual refund for %s completed, email already sent at cancellation", apptID)
 			} else if err := h.apptSvc.NotifyRefunded(c.Request.Context(), apptID); err != nil {
 				log.Printf("yookassa webhook: notify refunded: %v", err)
 			}
