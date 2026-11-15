@@ -138,6 +138,7 @@ func (h *Handler) AdminCreateService(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось создать услугу"})
 		return
 	}
+	h.logAction(c, "service.create", "service", uidPtr(s.ID), gin.H{"title": s.Title, "price_kopeks": s.PriceKopeks})
 	c.JSON(http.StatusCreated, s)
 }
 
@@ -177,6 +178,7 @@ func (h *Handler) AdminUpdateService(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось сохранить услугу"})
 		return
 	}
+	h.logAction(c, "service.update", "service", uidPtr(id), gin.H{"changes": in})
 	c.JSON(http.StatusOK, current)
 }
 
@@ -210,5 +212,6 @@ func (h *Handler) AdminDeleteService(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "услуга не найдена"})
 		return
 	}
+	h.logAction(c, "service.delete", "service", uidPtr(id), nil)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

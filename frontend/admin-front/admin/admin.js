@@ -353,6 +353,7 @@ async function openBookingDetails(id) {
     }
     if (bkDtOverlay !== overlay) return; // окно закрыли во время загрузки
     card.innerHTML = bkDetailsHtml(data);
+    bkLoadHistory(id, overlay);
     // Кнопки действий: выполняем действие и закрываем карточку
     const actions = card.querySelector('.bk-dt-actions-list');
     if (actions) actions.addEventListener('click', e => { if (e.target.closest('button')) bkDetailsClose(); });
@@ -408,11 +409,65 @@ function bkDetailsHtml(data) {
             ${bkDtRow('Ссылка отмены', cancelHtml)}
             ${bkDtRow('Создана', created ? `${created.datePart}, ${created.timePart}` : '')}
         </div>
+        <div class="bk-dt-history" id="bkDtHistory" hidden></div>
         <div class="bk-dt-actions">
             <div class="bk-dt-actions-list">${bookingActionsHtml(appt)}</div>
             <button type="button" class="btn" onclick="bkDetailsClose()">Закрыть</button>
         </div>
     `;
+}
+
+// ===== История действий по записи (журнал admin_actions) =====
+const BK_ACTION_LABELS = {
+    'appointment.create': 'Запись создана вручную',
+    'appointment.status': 'Изменён статус',
+    'appointment.reschedule': 'Перенос',
+    'appointment.cancel': 'Отмена',
+    'appointment.mark_paid': 'Отмечена оплата',
+    'appointment.delete': 'Запись удалена',
+};
+
+function bkHistoryDetails(item) {
+    const d = item.details || {};
+    const st = s => escapeHtml((STATUS_LABELS[s] && STATUS_LABELS[s].text) || s || '');
+    const dt = iso => { if (!iso) return '—'; const f = formatDateTime(iso); return `${f.datePart}, ${f.timePart}`; };
+    switch (item.action) {
+        case 'appointment.status':
+            return `${st(d.from)} → ${st(d.to)}`;
+        case 'appointment.reschedule':
+            return `${dt(d.from)} → ${dt(d.to)}`;
+        case 'appointment.cancel':
+            if (d.manual_refund) return 'с возвратом через кабинет ЮKassa';
+            if (d.refund) return 'с возвратом' + (d.refund_status ? ` (${escapeHtml(REFUND_STATUS_LABELS[d.refund_status] || d.refund_status)})` : '');
+            return 'без возврата';
+        case 'appointment.create':
+            return d.payment_status ? escapeHtml(PAYMENT_LABELS[d.payment_status] || d.payment_status) : '';
+        default:
+            return '';
+    }
+}
+
+async function bkLoadHistory(id, overlay) {
+    let data;
+    try {
+        data = await apiFetch(`/admin/actions?entity=appointment&entity_id=${encodeURIComponent(id)}&limit=50`);
+    } catch (err) {
+        return; // журнал недоступен: карточка работает без истории
+    }
+    if (bkDtOverlay !== overlay) return;
+    const box = document.getElementById('bkDtHistory');
+    if (!box) return;
+    const items = (data && data.items) || [];
+    const rows = items.map(item => {
+        const when = formatDateTime(item.created_at);
+        const label = escapeHtml(BK_ACTION_LABELS[item.action] || item.action);
+        const det = bkHistoryDetails(item);
+        const who = item.admin_username ? ` <span class="bk-dt-muted">· ${escapeHtml(item.admin_username)}</span>` : '';
+        return `<li><span class="bk-dt-muted">${when.datePart}, ${when.timePart}</span> ${label}${det ? ': ' + det : ''}${who}</li>`;
+    }).join('');
+    box.innerHTML = `<div class="bk-dt-history-title">История</div>` +
+        (rows ? `<ul class="bk-dt-history-list">${rows}</ul>` : '<div class="bk-dt-muted">действий из админки пока не было</div>');
+    box.hidden = false;
 }
 
 async function bkDtCopyCancel() {
