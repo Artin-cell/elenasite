@@ -614,3 +614,6 @@
 .bk-dt-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,.08); padding-top: 16px; }
 .bk-dt-actions-list { display: flex; flex-wrap: wrap; gap: 6px; }
 @media (max-width: 520px) { .bk-dt-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Ошибка в форме ручной записи */
+.bk-form-error { color: #c0392b; font-size: 13px; margin-bottom: 10px; display: none; }

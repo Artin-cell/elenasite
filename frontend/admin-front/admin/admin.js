@@ -653,6 +653,12 @@ async function ensureServiceOptionsLoaded() {
     }
 }
 
+// Минимальная дата в форме ручной записи: сегодня по Екатеринбургу
+function setManualDateMin() {
+    const input = document.getElementById('manualDate');
+    if (input) input.min = schedTodayKey();
+}
+
 async function toggleManualBookingForm() {
     const form = document.getElementById('manualBookingForm');
     const isHidden = form.style.display === 'none' || !form.style.display;
@@ -670,21 +676,71 @@ function clearManualBookingForm() {
         .forEach(id => { document.getElementById(id).value = ''; });
 }
 
-async function saveManualBooking() {
-    const firstName = document.getElementById('manualFirstName').value.trim();
-    const lastName = document.getElementById('manualLastName').value.trim();
-    const patronym = document.getElementById('manualPatronym').value.trim();
-    const phone = document.getElementById('manualPhone').value.trim();
-    const email = document.getElementById('manualEmail').value.trim();
-    const serviceId = document.getElementById('manualServiceSelect').value;
-    const dateStr = document.getElementById('manualDate').value;
-    const timeStr = document.getElementById('manualTime').value;
-    const format = document.getElementById('manualFormat').value;
-    const paymentStatus = document.getElementById('manualPaymentStatus').value;
-    const notes = document.getElementById('manualNotes').value.trim();
+// Показать/скрыть сообщение об ошибке в форме ручной записи
+function manualFormError(msg) {
+    let el = document.getElementById('manualFormError');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'manualFormError';
+        el.className = 'bk-form-error';
+        const actions = document.querySelector('#manualBookingForm .card-actions');
+        if (actions) actions.insertAdjacentElement('beforebegin', el);
+    }
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+}
 
-    if (!firstName || !lastName || !phone || !email || !serviceId || !dateStr || !timeStr) {
-        alert('Заполните обязательные поля: имя, фамилия, телефон, email, услуга, дата и время');
+async function saveManualBooking() {
+    manualFormError('');
+    const firstName = document.getElementById('manualFirstName').value.trim();
+    const lastName  = document.getElementById('manualLastName').value.trim();
+    const patronym  = document.getElementById('manualPatronym').value.trim();
+    const phone     = document.getElementById('manualPhone').value.trim();
+    const email     = document.getElementById('manualEmail').value.trim();
+    const serviceId = document.getElementById('manualServiceSelect').value;
+    const dateStr   = document.getElementById('manualDate').value;
+    const timeStr   = document.getElementById('manualTime').value;
+    const format    = document.getElementById('manualFormat').value;
+    const paymentStatus = document.getElementById('manualPaymentStatus').value;
+    const notes     = document.getElementById('manualNotes').value.trim();
+
+    // Клиентская валидация
+    const errors = [];
+    if (!firstName) errors.push('имя');
+    if (!lastName)  errors.push('фамилия');
+    if (!phone)     errors.push('телефон');
+    if (!email) {
+        errors.push('email');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        manualFormError('Некорректный email: введите адрес в формате name@example.com');
+        return;
+    }
+    if (!serviceId) errors.push('услуга');
+    if (!dateStr)   errors.push('дата');
+    if (!timeStr) {
+        errors.push('время');
+    } else {
+        const [hh, mi] = timeStr.split(':').map(Number);
+        if (mi !== 0) {
+            manualFormError('Время должно быть ровно на целый час (например, 11:00)');
+            return;
+        }
+        if (hh < 10 || hh >= 20) {
+            manualFormError('Время приёма — с 10:00 до 19:00 по Екатеринбургу');
+            return;
+        }
+        // Проверка: выбранный слот ещё не прошёл (по Екатеринбургу)
+        if (dateStr) {
+            const [y, mo, d] = dateStr.split('-').map(Number);
+            const slotMs = new Date(toCalendarISO(y, mo, d, hh, mi)).getTime();
+            if (slotMs <= Date.now()) {
+                manualFormError('Нельзя записать на прошедшее время');
+                return;
+            }
+        }
+    }
+    if (errors.length > 0) {
+        manualFormError('Заполните обязательные поля: ' + errors.join(', '));
         return;
     }
 
@@ -704,12 +760,13 @@ async function saveManualBooking() {
                 notes,
             }),
         });
+        manualFormError('');
         clearManualBookingForm();
         toggleManualBookingForm();
         alert('Запись создана, клиенту отправлено письмо с подтверждением');
         loadBookings();
     } catch (err) {
-        alert('Не удалось создать запись: ' + err.message);
+        manualFormError('Не удалось создать запись: ' + err.message);
     }
 }
 
