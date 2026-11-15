@@ -111,6 +111,8 @@ func main() {
 		cfg.JWTSecret,
 		time.Duration(cfg.JWTTTLHours)*time.Hour,
 		cfg.YooKassa.WebhookIPWhitelist,
+		tokenRepo,
+		cfg.BaseURL,
 	)
 	h.RegisterRoutes(r)
 
