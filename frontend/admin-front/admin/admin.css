@@ -597,3 +597,23 @@
 .bk-rs-actions { display: flex; gap: 10px; margin-bottom: 8px; }
 .bk-rs-error { font-size: 13px; color: #c0392b; min-height: 18px; margin-top: 8px; }
 .status-refund { background: #fff3cd; color: #856404; }
+
+/* ===== Карточка записи ===== */
+#bookingsTableBody tr[data-id] { cursor: pointer; }
+#bookingsTableBody tr[data-id]:hover { background: rgba(0,0,0,.03); }
+.bk-dt-card { background: #fff; border-radius: 12px; max-width: 560px; width: 100%; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+.bk-dt-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.bk-dt-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; font-size: 14px; line-height: 1.5; }
+.bk-dt-label { color: var(--text-muted); }
+.bk-dt-value { word-break: break-word; }
+.bk-dt-value code { font-size: 12px; background: rgba(0,0,0,.05); padding: 1px 4px; border-radius: 4px; }
+.bk-dt-muted { color: var(--text-muted); font-size: 12px; }
+.bk-dt-notes { white-space: pre-wrap; }
+.bk-dt-link { display: flex; gap: 8px; align-items: center; }
+.bk-dt-link .form-input { font-size: 12px; padding: 6px 8px; }
+.bk-dt-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,.08); padding-top: 16px; }
+.bk-dt-actions-list { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 520px) { .bk-dt-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Ошибка в форме ручной записи */
+.bk-form-error { color: #c0392b; font-size: 13px; margin-bottom: 10px; display: none; }

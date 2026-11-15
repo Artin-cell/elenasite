@@ -240,6 +240,13 @@ function renderBookings(list) {
             </tr>
         `;
     }).join('');
+
+    // Клик по строке (не по кнопке и не по ссылке) открывает карточку записи
+    tbody.onclick = e => {
+        if (e.target.closest('button, a, input, select')) return;
+        const tr = e.target.closest('tr[data-id]');
+        if (tr) openBookingDetails(tr.dataset.id);
+    };
 }
 
 async function cancelBooking(id) {
@@ -302,6 +309,130 @@ async function deleteBooking(id) {
     } catch (err) {
         alert('Не удалось удалить запись: ' + err.message);
     }
+}
+
+// ===== Карточка записи =====
+let bkDtOverlay = null;
+let bkDtKeyHandler = null;
+
+const PAYMENT_MODE_LABELS = { full: 'полная оплата', prepay_50: 'предоплата 50%' };
+const REFUND_STATUS_LABELS = {
+    pending: 'возврат оформляется в ЮKassa',
+    manual_pending: 'ожидает ручного возврата в ЮKassa',
+    succeeded: 'возврат выполнен',
+};
+
+function bkDtRow(label, valueHtml) {
+    if (valueHtml === '' || valueHtml == null) return '';
+    return `<div class="bk-dt-row"><div class="bk-dt-label">${label}</div><div class="bk-dt-value">${valueHtml}</div></div>`;
+}
+
+async function openBookingDetails(id) {
+    if (bkDtOverlay) bkDetailsClose();
+    const overlay = document.createElement('div');
+    overlay.className = 'bk-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:10000;padding:24px 16px;overflow-y:auto;';
+    const card = document.createElement('div');
+    card.className = 'bk-dt-card';
+    card.innerHTML = '<div class="bk-rs-hint">Загрузка…</div>';
+    overlay.appendChild(card);
+    overlay.addEventListener('click', e => { if (e.target === overlay) bkDetailsClose(); });
+    bkDtKeyHandler = e => { if (e.key === 'Escape') bkDetailsClose(); };
+    document.addEventListener('keydown', bkDtKeyHandler);
+    bkDtOverlay = overlay;
+    document.body.appendChild(overlay);
+
+    let data;
+    try {
+        data = await apiFetch(`/admin/appointments/${encodeURIComponent(id)}/details`);
+    } catch (err) {
+        if (bkDtOverlay !== overlay) return;
+        card.innerHTML = `<div class="bk-rs-error">Не удалось загрузить запись: ${escapeHtml(err.message)}</div>
+            <div class="bk-rs-actions"><button type="button" class="btn" onclick="bkDetailsClose()">Закрыть</button></div>`;
+        return;
+    }
+    if (bkDtOverlay !== overlay) return; // окно закрыли во время загрузки
+    card.innerHTML = bkDetailsHtml(data);
+    // Кнопки действий: выполняем действие и закрываем карточку
+    const actions = card.querySelector('.bk-dt-actions-list');
+    if (actions) actions.addEventListener('click', e => { if (e.target.closest('button')) bkDetailsClose(); });
+}
+
+function bkDetailsHtml(data) {
+    const appt = data.appointment || {};
+    const client = appt.client || {};
+    const service = appt.service || {};
+    const { datePart, timePart } = formatDateTime(appt.starts_at);
+    const end = formatDateTime(appt.ends_at).timePart;
+    const durationMin = Math.round((new Date(appt.ends_at) - new Date(appt.starts_at)) / 60000);
+    const statusInfo = STATUS_LABELS[appt.status] || { text: appt.status, cls: 'status-pending' };
+    const fullName = [client.last_name, client.first_name, client.patronym].filter(Boolean).join(' ');
+
+    const contacts = [
+        client.phone ? `<a href="tel:${escapeHtml(client.phone)}">${escapeHtml(client.phone)}</a>` : '',
+        client.email ? `<a href="mailto:${escapeHtml(client.email)}">${escapeHtml(client.email)}</a>` : '',
+    ].filter(Boolean).join('<br>');
+
+    let payment = escapeHtml(PAYMENT_LABELS[appt.payment_status] || appt.payment_status || '');
+    if (appt.amount_kopeks > 0) payment += ' · ' + escapeHtml(formatRubles(appt.amount_kopeks));
+    if (appt.payment_mode === 'prepay_50' && appt.payment_status === 'paid' && appt.amount_kopeks > 0) {
+        payment += ' · остаток при визите ' + escapeHtml(formatRubles(appt.amount_kopeks));
+    }
+
+    let cancelHtml = '<span class="bk-dt-muted">нет действующей ссылки</span>';
+    if (data.cancel_url) {
+        const exp = data.cancel_expires_at ? formatDateTime(data.cancel_expires_at) : null;
+        cancelHtml = `<div class="bk-dt-link">
+                <input type="text" class="form-input" id="bkDtCancelUrl" readonly value="${escapeHtml(data.cancel_url)}">
+                <button type="button" class="btn btn-small" onclick="bkDtCopyCancel()">Копировать</button>
+            </div>
+            ${exp ? `<div class="bk-dt-muted">действует до ${exp.datePart}, ${exp.timePart}</div>` : ''}`;
+    }
+
+    const created = appt.created_at ? formatDateTime(appt.created_at) : null;
+
+    return `
+        <div class="bk-rs-title">Запись</div>
+        <div class="bk-dt-grid">
+            ${bkDtRow('Клиент', `<strong>${escapeHtml(fullName)}</strong>`)}
+            ${bkDtRow('Контакты', contacts)}
+            ${bkDtRow('Услуга', escapeHtml(service.title || ''))}
+            ${bkDtRow('Дата и время', `${datePart}, ${timePart}–${end} <span class="bk-dt-muted">(${durationMin} мин, по Екатеринбургу)</span>`)}
+            ${bkDtRow('Формат', appt.format === 'online' ? 'Онлайн' : 'Очно')}
+            ${bkDtRow('Статус', `<span class="status ${statusInfo.cls}">${escapeHtml(statusInfo.text)}</span>`)}
+            ${bkDtRow('Режим оплаты', escapeHtml(PAYMENT_MODE_LABELS[appt.payment_mode] || appt.payment_mode || ''))}
+            ${bkDtRow('Оплата', payment)}
+            ${bkDtRow('ID платежа', appt.payment_id ? `<code>${escapeHtml(appt.payment_id)}</code>` : '')}
+            ${bkDtRow('Возврат', appt.refund_status ? escapeHtml(REFUND_STATUS_LABELS[appt.refund_status] || appt.refund_status) + (appt.refund_id ? ` <code>${escapeHtml(appt.refund_id)}</code>` : '') : '')}
+            ${bkDtRow('Заметки', appt.notes ? `<div class="bk-dt-notes">${escapeHtml(appt.notes)}</div>` : '<span class="bk-dt-muted">нет</span>')}
+            ${bkDtRow('Ссылка отмены', cancelHtml)}
+            ${bkDtRow('Создана', created ? `${created.datePart}, ${created.timePart}` : '')}
+        </div>
+        <div class="bk-dt-actions">
+            <div class="bk-dt-actions-list">${bookingActionsHtml(appt)}</div>
+            <button type="button" class="btn" onclick="bkDetailsClose()">Закрыть</button>
+        </div>
+    `;
+}
+
+async function bkDtCopyCancel() {
+    const input = document.getElementById('bkDtCancelUrl');
+    if (!input) return;
+    try {
+        await navigator.clipboard.writeText(input.value);
+    } catch (e) {
+        input.select();
+        document.execCommand('copy');
+    }
+    const btn = input.nextElementSibling;
+    if (btn) { btn.textContent = 'Скопировано'; setTimeout(() => { btn.textContent = 'Копировать'; }, 1500); }
+}
+
+function bkDetailsClose() {
+    if (bkDtKeyHandler) document.removeEventListener('keydown', bkDtKeyHandler);
+    bkDtKeyHandler = null;
+    if (bkDtOverlay) bkDtOverlay.remove();
+    bkDtOverlay = null;
 }
 
 // ===== Перенос записи: окно со свободными слотами =====
@@ -522,6 +653,12 @@ async function ensureServiceOptionsLoaded() {
     }
 }
 
+// Минимальная дата в форме ручной записи: сегодня по Екатеринбургу
+function setManualDateMin() {
+    const input = document.getElementById('manualDate');
+    if (input) input.min = schedTodayKey();
+}
+
 async function toggleManualBookingForm() {
     const form = document.getElementById('manualBookingForm');
     const isHidden = form.style.display === 'none' || !form.style.display;
@@ -539,21 +676,71 @@ function clearManualBookingForm() {
         .forEach(id => { document.getElementById(id).value = ''; });
 }
 
-async function saveManualBooking() {
-    const firstName = document.getElementById('manualFirstName').value.trim();
-    const lastName = document.getElementById('manualLastName').value.trim();
-    const patronym = document.getElementById('manualPatronym').value.trim();
-    const phone = document.getElementById('manualPhone').value.trim();
-    const email = document.getElementById('manualEmail').value.trim();
-    const serviceId = document.getElementById('manualServiceSelect').value;
-    const dateStr = document.getElementById('manualDate').value;
-    const timeStr = document.getElementById('manualTime').value;
-    const format = document.getElementById('manualFormat').value;
-    const paymentStatus = document.getElementById('manualPaymentStatus').value;
-    const notes = document.getElementById('manualNotes').value.trim();
+// Показать/скрыть сообщение об ошибке в форме ручной записи
+function manualFormError(msg) {
+    let el = document.getElementById('manualFormError');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'manualFormError';
+        el.className = 'bk-form-error';
+        const actions = document.querySelector('#manualBookingForm .card-actions');
+        if (actions) actions.insertAdjacentElement('beforebegin', el);
+    }
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+}
 
-    if (!firstName || !lastName || !phone || !email || !serviceId || !dateStr || !timeStr) {
-        alert('Заполните обязательные поля: имя, фамилия, телефон, email, услуга, дата и время');
+async function saveManualBooking() {
+    manualFormError('');
+    const firstName = document.getElementById('manualFirstName').value.trim();
+    const lastName  = document.getElementById('manualLastName').value.trim();
+    const patronym  = document.getElementById('manualPatronym').value.trim();
+    const phone     = document.getElementById('manualPhone').value.trim();
+    const email     = document.getElementById('manualEmail').value.trim();
+    const serviceId = document.getElementById('manualServiceSelect').value;
+    const dateStr   = document.getElementById('manualDate').value;
+    const timeStr   = document.getElementById('manualTime').value;
+    const format    = document.getElementById('manualFormat').value;
+    const paymentStatus = document.getElementById('manualPaymentStatus').value;
+    const notes     = document.getElementById('manualNotes').value.trim();
+
+    // Клиентская валидация
+    const errors = [];
+    if (!firstName) errors.push('имя');
+    if (!lastName)  errors.push('фамилия');
+    if (!phone)     errors.push('телефон');
+    if (!email) {
+        errors.push('email');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        manualFormError('Некорректный email: введите адрес в формате name@example.com');
+        return;
+    }
+    if (!serviceId) errors.push('услуга');
+    if (!dateStr)   errors.push('дата');
+    if (!timeStr) {
+        errors.push('время');
+    } else {
+        const [hh, mi] = timeStr.split(':').map(Number);
+        if (mi !== 0) {
+            manualFormError('Время должно быть ровно на целый час (например, 11:00)');
+            return;
+        }
+        if (hh < 10 || hh >= 20) {
+            manualFormError('Время приёма — с 10:00 до 19:00 по Екатеринбургу');
+            return;
+        }
+        // Проверка: выбранный слот ещё не прошёл (по Екатеринбургу)
+        if (dateStr) {
+            const [y, mo, d] = dateStr.split('-').map(Number);
+            const slotMs = new Date(toCalendarISO(y, mo, d, hh, mi)).getTime();
+            if (slotMs <= Date.now()) {
+                manualFormError('Нельзя записать на прошедшее время');
+                return;
+            }
+        }
+    }
+    if (errors.length > 0) {
+        manualFormError('Заполните обязательные поля: ' + errors.join(', '));
         return;
     }
 
@@ -573,12 +760,13 @@ async function saveManualBooking() {
                 notes,
             }),
         });
+        manualFormError('');
         clearManualBookingForm();
         toggleManualBookingForm();
         alert('Запись создана, клиенту отправлено письмо с подтверждением');
         loadBookings();
     } catch (err) {
-        alert('Не удалось создать запись: ' + err.message);
+        manualFormError('Не удалось создать запись: ' + err.message);
     }
 }
 

@@ -29,7 +29,9 @@ type Handler struct {
 	newsRepo        *repository.NewsRepo
 	reviewRepo      *repository.ReviewRepo
 	blockedSlotRepo *repository.BlockedSlotRepo
+	tokenRepo       *repository.CancellationTokenRepo
 	payment         service.PaymentProvider
+	baseURL         string
 	jwtSecret       string
 	jwtTTL          time.Duration
 
@@ -52,6 +54,8 @@ func New(
 	jwtSecret string,
 	jwtTTL time.Duration,
 	webhookIPWhitelist []string,
+	tokenRepo *repository.CancellationTokenRepo,
+	baseURL string,
 ) *Handler {
 	return &Handler{
 		publicBookingLimiter: middleware.NewRateLimiter(20, time.Minute).Middleware(),
@@ -69,6 +73,8 @@ func New(
 		jwtSecret:            jwtSecret,
 		jwtTTL:               jwtTTL,
 		webhookIPWhitelist:   webhookIPWhitelist,
+		tokenRepo:            tokenRepo,
+		baseURL:              baseURL,
 	}
 }
 
@@ -118,6 +124,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		protected.DELETE("/clients/:id", h.AdminDeleteClient)
 
 		protected.GET("/appointments", h.AdminListAppointments)
+		protected.GET("/appointments/:id/details", h.AdminAppointmentDetails)
 		protected.DELETE("/appointments/:id", h.AdminDeleteAppointment)
 		protected.PATCH("/appointments/:id/reschedule", h.AdminReschedule)
 		protected.PATCH("/appointments/:id/status", h.AdminUpdateStatus)
@@ -859,7 +866,13 @@ func (h *Handler) AdminCreateAppointment(c *gin.Context) {
 		Notes         string `json:"notes"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
+		log.Printf("admin create appointment: bad request: %v", err)
+		msg := err.Error()
+		if strings.Contains(msg, "Email") || strings.Contains(msg, "email") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "некорректный email"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "данные заполнены некорректно"})
 		return
 	}
 
