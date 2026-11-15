@@ -57,6 +57,7 @@ func main() {
 	}
 
 	apptSvc := service.NewAppointmentService(
+		database,
 		apptRepo,
 		tokenRepo,
 		clientRepo,

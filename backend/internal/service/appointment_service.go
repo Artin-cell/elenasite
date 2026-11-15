@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 )
 
 type MailSender interface {
@@ -22,6 +23,7 @@ type MailSender interface {
 }
 
 type AppointmentService struct {
+	db                        *sqlx.DB
 	apptRepo                  *repository.AppointmentRepo
 	tokenRepo                 *repository.CancellationTokenRepo
 	clientRepo                *repository.ClientRepo
@@ -35,6 +37,7 @@ type AppointmentService struct {
 }
 
 func NewAppointmentService(
+	db *sqlx.DB,
 	apptRepo *repository.AppointmentRepo,
 	tokenRepo *repository.CancellationTokenRepo,
 	clientRepo *repository.ClientRepo,
@@ -47,6 +50,7 @@ func NewAppointmentService(
 	cancellationDeadlineHours int,
 ) *AppointmentService {
 	return &AppointmentService{
+		db:                        db,
 		apptRepo:                  apptRepo,
 		tokenRepo:                 tokenRepo,
 		clientRepo:                clientRepo,
@@ -163,6 +167,22 @@ func (s *AppointmentService) validateBookable(ctx context.Context, startsAt, end
 	return nil
 }
 
+// validateBookableTx — то же самое, но внутри открытой транзакции.
+func (s *AppointmentService) validateBookableTx(ctx context.Context, tx *sqlx.Tx, startsAt, endsAt time.Time) error {
+	if err := validateAppointmentWindow(startsAt, endsAt.Sub(startsAt)); err != nil {
+		return err
+	}
+	loc := calendarLoc()
+	blocked, err := s.blockedRepo.IsBlockedTx(ctx, tx, startsAt, endsAt, loc)
+	if err != nil {
+		return err
+	}
+	if blocked {
+		return errors.New("выбранное время заблокировано")
+	}
+	return nil
+}
+
 func (s *AppointmentService) Book(ctx context.Context, req BookRequest) (*BookResult, error) {
 	client, err := s.clientRepo.FindOrCreate(ctx, &models.Client{
 		FirstName: req.Client.FirstName,
@@ -200,10 +220,6 @@ func (s *AppointmentService) Book(ctx context.Context, req BookRequest) (*BookRe
 		duration = 60 * time.Minute
 	}
 	endsAt := startsAt.Add(duration)
-	if err := s.validateBookable(ctx, startsAt, endsAt); err != nil {
-		return nil, err
-	}
-
 	appt := &models.Appointment{
 		ClientID:      client.ID,
 		ServiceID:     req.ServiceID,
@@ -216,8 +232,16 @@ func (s *AppointmentService) Book(ctx context.Context, req BookRequest) (*BookRe
 		AmountKopeks:  amountKopeks,
 	}
 
-	if err := s.apptRepo.Create(ctx, appt); err != nil {
-		return nil, fmt.Errorf("время уже занято или произошла ошибка: %w", err)
+	if err := repository.WithScheduleLock(ctx, s.db, func(tx *sqlx.Tx) error {
+		if err := s.validateBookableTx(ctx, tx, startsAt, endsAt); err != nil {
+			return err
+		}
+		if err := s.apptRepo.CreateTx(ctx, tx, appt); err != nil {
+			return fmt.Errorf("время уже занято или произошла ошибка: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	if amountKopeks <= 0 {
@@ -501,12 +525,16 @@ func (s *AppointmentService) Reschedule(ctx context.Context, apptID uuid.UUID, n
 	}
 	duration := appt.EndsAt.Sub(appt.StartsAt)
 	newEnd := newStart.Add(duration)
-	if err := s.validateBookable(ctx, newStart, newEnd); err != nil {
+	if err := repository.WithScheduleLock(ctx, s.db, func(tx *sqlx.Tx) error {
+		if err := s.validateBookableTx(ctx, tx, newStart, newEnd); err != nil {
+			return err
+		}
+		if err := s.apptRepo.RescheduleTx(ctx, tx, apptID, newStart, newEnd); err != nil {
+			return fmt.Errorf("время уже занято или произошла ошибка: %w", err)
+		}
+		return nil
+	}); err != nil {
 		return err
-	}
-
-	if err := s.apptRepo.Reschedule(ctx, apptID, newStart, newEnd); err != nil {
-		return fmt.Errorf("время уже занято или произошла ошибка: %w", err)
 	}
 
 	// Старая ссылка отмены привязана ко времени прежнего приёма и может
@@ -625,10 +653,6 @@ func (s *AppointmentService) BookManual(ctx context.Context, req ManualBookReque
 		duration = 60 * time.Minute
 	}
 	endsAt := startsAt.Add(duration)
-	if err := s.validateBookable(ctx, startsAt, endsAt); err != nil {
-		return nil, err
-	}
-
 	paymentStatus := req.PaymentStatus
 	if paymentStatus == "" {
 		paymentStatus = models.PaymentStatusPaid
@@ -647,8 +671,16 @@ func (s *AppointmentService) BookManual(ctx context.Context, req ManualBookReque
 		Notes:         req.Notes,
 	}
 
-	if err := s.apptRepo.Create(ctx, appt); err != nil {
-		return nil, fmt.Errorf("время уже занято или произошла ошибка: %w", err)
+	if err := repository.WithScheduleLock(ctx, s.db, func(tx *sqlx.Tx) error {
+		if err := s.validateBookableTx(ctx, tx, startsAt, endsAt); err != nil {
+			return err
+		}
+		if err := s.apptRepo.CreateTx(ctx, tx, appt); err != nil {
+			return fmt.Errorf("время уже занято или произошла ошибка: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	appt.Client = client

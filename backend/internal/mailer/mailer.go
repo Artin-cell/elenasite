@@ -130,6 +130,21 @@ func infoBox(innerHTML string) string {
 </table>`, colorBg, colorPrimary, fontBody, colorText, innerHTML)
 }
 
+// Контакты для отмены и переноса записи (как на сайте).
+const (
+	contactEmail = "e-kosta@yandex.ru"
+	contactPhone = "+7 908 901-27-07"
+	contactTel   = "+79089012707"
+)
+
+const cancelContactsPlain = "Для отмены или переноса записи напишите на " + contactEmail +
+	" или позвоните по телефону " + contactPhone + "."
+
+func cancelContactsHTML(intro string) string {
+	return fmt.Sprintf(`%s напишите на <a href="mailto:%s" style="color:%s;">%s</a> или позвоните по телефону <a href="tel:%s" style="color:%s;">%s</a>.`,
+		intro, contactEmail, colorPrimary, contactEmail, contactTel, colorPrimary, contactPhone)
+}
+
 type BookingData struct {
 	FirstName       string
 	AppointmentDate time.Time
@@ -146,9 +161,8 @@ func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
 	subject := fmt.Sprintf("%s, вы записаны на приём %s к Елене", d.FirstName, date)
 
 	plainText := fmt.Sprintf(
-		"%s, вы записаны на приём %s к Елене.\n\n"+
-			"Вы можете отменить запись по ссылке:\n%s",
-		d.FirstName, date, d.CancelURL,
+		"%s, вы записаны на приём %s к Елене.\n\n%s",
+		d.FirstName, date, cancelContactsPlain,
 	)
 
 	location := "г. Екатеринбург, ул. Уральских рабочих 67"
@@ -165,16 +179,15 @@ func (m *Mailer) SendBookingConfirmation(to string, d BookingData) error {
 		</div>
 		%s
 		<div style="font-family:%s; font-size:14px; color:%s; line-height:1.7;">
-			Если планы изменятся, вы можете отменить запись по кнопке ниже.
+			%s
 		</div>
-		%s
 		%s
 	`,
 		fontHeading, colorText,
 		fontBody, colorTextMuted, html.EscapeString(d.FirstName),
 		infoBox(fmt.Sprintf("<strong>Дата и время:</strong> %s", html.EscapeString(date))),
 		fontBody, colorTextMuted,
-		emailButton(d.CancelURL, "Отменить запись"),
+		cancelContactsHTML("Если планы изменятся, для отмены или переноса записи"),
 		calBtns,
 	)
 
@@ -201,9 +214,8 @@ func (m *Mailer) SendRescheduleNotice(to string, d RescheduleData) error {
 	subject := fmt.Sprintf("%s, ваша запись перенесена на %s", d.FirstName, newDate)
 
 	plainText := fmt.Sprintf(
-		"%s, ваша запись к Елене перенесена с %s на %s.\n\n"+
-			"Вы можете отменить запись по ссылке:\n%s",
-		d.FirstName, oldDate, newDate, d.CancelURL,
+		"%s, ваша запись к Елене перенесена с %s на %s.\n\n%s",
+		d.FirstName, oldDate, newDate, cancelContactsPlain,
 	)
 
 	locationR := "г. Екатеринбург, ул. Уральских рабочих 67"
@@ -220,16 +232,15 @@ func (m *Mailer) SendRescheduleNotice(to string, d RescheduleData) error {
 		</div>
 		%s
 		<div style="font-family:%s; font-size:14px; color:%s; line-height:1.7;">
-			Если новое время вам не подходит, вы можете отменить запись по кнопке ниже.
+			%s
 		</div>
-		%s
 		%s
 	`,
 		fontHeading, colorText,
 		fontBody, colorTextMuted, html.EscapeString(d.FirstName), html.EscapeString(oldDate),
 		infoBox(fmt.Sprintf("<strong>Новая дата и время:</strong> %s", html.EscapeString(newDate))),
 		fontBody, colorTextMuted,
-		emailButton(d.CancelURL, "Отменить запись"),
+		cancelContactsHTML("Если новое время вам не подходит, для отмены или переноса записи"),
 		calBtnsR,
 	)
 

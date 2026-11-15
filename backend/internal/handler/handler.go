@@ -148,11 +148,13 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 
 		protected.GET("/news", h.AdminListNews)
 		protected.POST("/news", h.AdminCreateNews)
+		protected.PATCH("/news/:id", h.AdminUpdateNews)
 		protected.PUT("/news/:id", h.AdminUpdateNews)
 		protected.DELETE("/news/:id", h.AdminDeleteNews)
 
 		protected.GET("/reviews", h.AdminListReviews)
 		protected.POST("/reviews", h.AdminCreateReview)
+		protected.PATCH("/reviews/:id", h.AdminUpdateReview)
 		protected.PUT("/reviews/:id", h.AdminUpdateReview)
 		protected.DELETE("/reviews/:id", h.AdminDeleteReview)
 	}
@@ -270,6 +272,7 @@ func safeAppointmentError(err error) string {
 		"время записи должно быть с 10:00 до 19:00",
 		"сеанс выходит за пределы рабочего времени",
 		"выбранное время заблокировано",
+		"расписание сейчас обновляется, попробуйте снова",
 		"услуга недоступна для записи",
 		"для этой услуги доступен только онлайн-формат",
 		"для этой услуги доступен только очный формат",
@@ -693,121 +696,7 @@ func (h *Handler) AdminUpdateStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// Обработчики услуг: admin_services.go
-
-func (h *Handler) AdminListNews(c *gin.Context) {
-	list, err := h.newsRepo.ListAll(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	c.JSON(http.StatusOK, list)
-}
-
-func (h *Handler) AdminCreateNews(c *gin.Context) {
-	var n models.News
-	if err := c.ShouldBindJSON(&n); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
-		return
-	}
-	if err := h.newsRepo.Create(c.Request.Context(), &n); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	h.logAction(c, "news.create", "news", uidPtr(n.ID), gin.H{"title": n.Title})
-	c.JSON(http.StatusCreated, n)
-}
-
-func (h *Handler) AdminUpdateNews(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	var n models.News
-	if err := c.ShouldBindJSON(&n); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
-		return
-	}
-	n.ID = id
-	if err := h.newsRepo.Update(c.Request.Context(), &n); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	h.logAction(c, "news.update", "news", uidPtr(n.ID), gin.H{"title": n.Title})
-	c.JSON(http.StatusOK, n)
-}
-
-func (h *Handler) AdminDeleteNews(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	if err := h.newsRepo.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	h.logAction(c, "news.delete", "news", uidPtr(id), nil)
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
-
-func (h *Handler) AdminListReviews(c *gin.Context) {
-	list, err := h.reviewRepo.ListAll(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	c.JSON(http.StatusOK, list)
-}
-
-func (h *Handler) AdminCreateReview(c *gin.Context) {
-	var r models.Review
-	if err := c.ShouldBindJSON(&r); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
-		return
-	}
-	if err := h.reviewRepo.Create(c.Request.Context(), &r); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	h.logAction(c, "review.create", "review", uidPtr(r.ID), gin.H{"is_visible": r.IsVisible})
-	c.JSON(http.StatusCreated, r)
-}
-
-func (h *Handler) AdminUpdateReview(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	var r models.Review
-	if err := c.ShouldBindJSON(&r); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
-		return
-	}
-	r.ID = id
-	if err := h.reviewRepo.Update(c.Request.Context(), &r); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	h.logAction(c, "review.update", "review", uidPtr(r.ID), gin.H{"is_visible": r.IsVisible})
-	c.JSON(http.StatusOK, r)
-}
-
-func (h *Handler) AdminDeleteReview(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	if err := h.reviewRepo.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-	h.logAction(c, "review.delete", "review", uidPtr(id), nil)
-	c.JSON(http.StatusOK, gin.H{"ok": true})
-}
+// Обработчики услуг: admin_services.go; новостей и отзывов: admin_content.go
 
 func (h *Handler) AdminListBlocks(c *gin.Context) {
 	loc, err := time.LoadLocation("Asia/Yekaterinburg")

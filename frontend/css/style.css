@@ -640,62 +640,13 @@
       color: var(--text-muted);
     }
 
-    /* ОБНОВЛЕННАЯ СЕТКА ФОРМЫ ЗАПИСИ (ФОРМИРОВАНИЕ ПОРЯДКА) */
+    /* ===== Форма записи: двухколоночный flex-layout ===== */
     .booking-form {
-      justify-content: center;
       border: 1px solid var(--border-color);
       padding: 48px;
       width: 60%;
       margin-left: auto;
       margin-right: auto;
-    }
-
-    .booking-grid {
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ПОРЯДОК НА МОБИЛЬНЫХ УСТРОЙСТВАХ */
-    .fg-title {
-      order: 1;
-    }
-
-    .fg-name {
-      order: 2;
-    }
-
-    .fg-contacts {
-      order: 3;
-      margin-bottom: 20px;
-    }
-
-    .fg-service {
-      order: 4;
-    }
-
-    .fg-date {
-      order: 5;
-    }
-
-    .fg-time {
-      order: 6;
-    }
-
-    .fg-format {
-      order: 7;
-    }
-
-    .fg-payment {
-      order: 8;
-    }
-
-    .fg-soglasie {
-      order: 9;
-    }
-
-    .fg-submit {
-      order: 10;
-      margin-top: 10px;
     }
 
     @media (max-width: 1054px) {
@@ -712,69 +663,45 @@
       }
     }
 
-    /* ПОРЯДОК И РАСПОЛОЖЕНИЕ НА ДЕСКТОПЕ (С ИСПОЛЬЗОВАНИЕМ CSS GRID AREAS) */
-    @media (min-width: 1200px) {
-      .booking-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-          "title   ."
-          "name    time"
-          "contact format"
-          "service payment"
-          "date    soglasie"
-          "submit  submit";
-        /* Точка означает пустую ячейку, так как календарь (date) высокий и займет место ниже */
-        column-gap: 20px;
-        align-items: start;
-      }
+    .bf-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      align-items: flex-start;
+    }
 
-      .fg-title {
-        grid-area: title;
-        margin-bottom: 20px;
-      }
+    .bf-col {
+      flex: 1 1 320px;
+      min-width: 0;
+    }
 
-      .fg-name {
-        grid-area: name;
-      }
+    .bf-footer {
+      flex: 0 0 100%;
+      width: 100%;
+      border-top: 1px solid var(--border-color);
+      padding-top: 20px;
+      margin-top: 4px;
+    }
 
-      .fg-contacts {
-        grid-area: contact;
-      }
+    .bf-tz-hint {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
 
-      .fg-service {
-        grid-area: service;
-      }
+    .bf-col .form-ttl {
+      margin-bottom: 20px;
+    }
 
-      /* Теперь услуга встанет в левый столбец под контакты */
-      .fg-date {
-        grid-area: date;
-      }
+    .bf-col .form-row2 {
+      margin-bottom: 20px;
+    }
 
-
-      .fg-time {
-        grid-area: time;
-      }
-
-      .fg-format {
-        grid-area: format;
-      }
-
-      .fg-payment {
-        grid-area: payment;
-      }
-
-      .fg-soglasie {
-        grid-area: soglasie;
-      }
-
-      .fg-submit {
-        grid-area: submit;
-      }
-
-      .fg-submit {
-        grid-area: submit;
-        margin-top: 0;
+    /* Одна колонка на телефоне */
+    @media (max-width: 768px) {
+      .bf-col {
+        flex: 0 0 100%;
+        width: 100%;
       }
     }
 
