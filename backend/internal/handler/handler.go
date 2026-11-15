@@ -30,6 +30,7 @@ type Handler struct {
 	reviewRepo      *repository.ReviewRepo
 	blockedSlotRepo *repository.BlockedSlotRepo
 	tokenRepo       *repository.CancellationTokenRepo
+	actionRepo      *repository.AdminActionRepo
 	payment         service.PaymentProvider
 	baseURL         string
 	jwtSecret       string
@@ -74,6 +75,7 @@ func New(
 		jwtTTL:               jwtTTL,
 		webhookIPWhitelist:   webhookIPWhitelist,
 		tokenRepo:            tokenRepo,
+		actionRepo:           repository.NewAdminActionRepo(db),
 		baseURL:              baseURL,
 	}
 }
@@ -125,6 +127,7 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 
 		protected.GET("/appointments", h.AdminListAppointments)
 		protected.GET("/appointments/:id/details", h.AdminAppointmentDetails)
+		protected.GET("/actions", h.AdminListActions)
 		protected.DELETE("/appointments/:id", h.AdminDeleteAppointment)
 		protected.PATCH("/appointments/:id/reschedule", h.AdminReschedule)
 		protected.PATCH("/appointments/:id/status", h.AdminUpdateStatus)
@@ -460,6 +463,7 @@ func (h *Handler) AdminDeleteClient(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "client.delete", "client", uidPtr(id), nil)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -494,6 +498,7 @@ func (h *Handler) AdminCreateClient(c *gin.Context) {
 		return
 	}
 
+	h.logAction(c, "client.create", "client", uidPtr(created.ID), nil)
 	c.JSON(http.StatusCreated, created)
 }
 
@@ -603,6 +608,7 @@ func (h *Handler) AdminDeleteAppointment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось удалить запись"})
 		return
 	}
+	h.logAction(c, "appointment.delete", "appointment", uidPtr(id), gin.H{"status": appt.Status, "starts_at": appt.StartsAt})
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -624,10 +630,16 @@ func (h *Handler) AdminReschedule(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid starts_at"})
 		return
 	}
+	var oldStart *time.Time
+	if old, err := h.apptRepo.GetByID(c.Request.Context(), id); err == nil {
+		s := old.StartsAt
+		oldStart = &s
+	}
 	if err := h.apptSvc.Reschedule(c.Request.Context(), id, t); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": safeAppointmentError(err)})
 		return
 	}
+	h.logAction(c, "appointment.reschedule", "appointment", uidPtr(id), gin.H{"from": oldStart, "to": t})
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -668,6 +680,7 @@ func (h *Handler) AdminUpdateStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось изменить статус"})
 		return
 	}
+	h.logAction(c, "appointment.status", "appointment", uidPtr(id), gin.H{"from": appt.Status, "to": allowedStatus})
 	switch allowedStatus {
 	case models.StatusCancelled, models.StatusCompleted, models.StatusNoShow:
 		// Запись больше не активна: ссылка отмены из письма не должна считаться действующей.
@@ -701,6 +714,7 @@ func (h *Handler) AdminCreateNews(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "news.create", "news", uidPtr(n.ID), gin.H{"title": n.Title})
 	c.JSON(http.StatusCreated, n)
 }
 
@@ -720,6 +734,7 @@ func (h *Handler) AdminUpdateNews(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "news.update", "news", uidPtr(n.ID), gin.H{"title": n.Title})
 	c.JSON(http.StatusOK, n)
 }
 
@@ -733,6 +748,7 @@ func (h *Handler) AdminDeleteNews(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "news.delete", "news", uidPtr(id), nil)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -755,6 +771,7 @@ func (h *Handler) AdminCreateReview(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "review.create", "review", uidPtr(r.ID), gin.H{"is_visible": r.IsVisible})
 	c.JSON(http.StatusCreated, r)
 }
 
@@ -774,6 +791,7 @@ func (h *Handler) AdminUpdateReview(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "review.update", "review", uidPtr(r.ID), gin.H{"is_visible": r.IsVisible})
 	c.JSON(http.StatusOK, r)
 }
 
@@ -787,6 +805,7 @@ func (h *Handler) AdminDeleteReview(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "review.delete", "review", uidPtr(id), nil)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -856,6 +875,7 @@ func (h *Handler) AdminDeleteBlock(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
+	h.logAction(c, "block.delete", "block", uidPtr(id), nil)
 	c.Status(http.StatusNoContent)
 }
 
@@ -919,5 +939,6 @@ func (h *Handler) AdminCreateAppointment(c *gin.Context) {
 		return
 	}
 
+	h.logAction(c, "appointment.create", "appointment", uidPtr(appt.ID), gin.H{"service_id": serviceID, "starts_at": appt.StartsAt, "payment_status": appt.PaymentStatus})
 	c.JSON(http.StatusCreated, appt)
 }

@@ -366,6 +366,7 @@ func (h *Handler) AdminCreateBlocks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось сохранить расписание"})
 		return
 	}
+	h.logAction(c, "blocks.create", "block", nil, gin.H{"date": req.Date, "from": req.From, "to": req.To, "weekdays": req.Weekdays, "slot_time": req.SlotTime, "slot_times": req.SlotTimes, "force": req.Force, "created": created})
 	c.JSON(http.StatusOK, gin.H{"created": created, "skipped": len(items) - created})
 }
 
@@ -401,5 +402,6 @@ func (h *Handler) AdminDeleteBlocksRange(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось открыть период"})
 		return
 	}
+	h.logAction(c, "blocks.delete_range", "block", nil, gin.H{"from": from, "to": to, "deleted": n})
 	c.JSON(http.StatusOK, gin.H{"deleted": n})
 }

@@ -52,6 +52,7 @@ func (h *Handler) AdminCancelAppointment(c *gin.Context) {
 		return
 	}
 
+	h.logAction(c, "appointment.cancel", "appointment", uidPtr(id), gin.H{"refund": req.Refund, "manual_refund": req.ManualRefund, "refunded": res.Refunded, "refund_status": res.RefundStatus})
 	c.JSON(http.StatusOK, gin.H{
 		"ok":            true,
 		"refunded":      res.Refunded,
@@ -76,5 +77,6 @@ func (h *Handler) AdminMarkPaid(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": "отметить оплаченной можно только подтверждённую запись без онлайн-оплаты"})
 		return
 	}
+	h.logAction(c, "appointment.mark_paid", "appointment", uidPtr(id), nil)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

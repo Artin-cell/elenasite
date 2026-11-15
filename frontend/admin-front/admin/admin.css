@@ -613,6 +613,9 @@
 .bk-dt-link .form-input { font-size: 12px; padding: 6px 8px; }
 .bk-dt-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,.08); padding-top: 16px; }
 .bk-dt-actions-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.bk-dt-history { border-top: 1px solid rgba(0,0,0,.08); padding-top: 12px; margin-bottom: 16px; font-size: 13px; }
+.bk-dt-history-title { font-weight: 600; margin-bottom: 6px; }
+.bk-dt-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; }
 @media (max-width: 520px) { .bk-dt-row { grid-template-columns: 1fr; gap: 2px; } }
 
 /* Ошибка в форме ручной записи */
