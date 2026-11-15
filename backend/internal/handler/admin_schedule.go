@@ -343,25 +343,32 @@ func (h *Handler) AdminCreateBlocks(c *gin.Context) {
 		return
 	}
 
-	if !req.Force {
-		conflicts, err := h.scheduleConflicts(c.Request.Context(), days, slots, loc)
-		if err != nil {
-			log.Printf("admin create blocks conflicts: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось проверить существующие записи"})
-			return
-		}
-		if len(conflicts) > 0 {
+	created, err := h.blockedSlotRepo.BulkCreateLocked(c.Request.Context(), h.db, h.apptRepo, items, reason, req.Force, loc)
+	if err != nil {
+		var ce *repository.ErrScheduleConflict
+		if errors.As(err, &ce) {
+			out := make([]scheduleConflict, 0, len(ce.Conflicts))
+			for _, a := range ce.Conflicts {
+				name := ""
+				if a.Client != nil {
+					name = scheduleClientName(a.Client)
+				}
+				d := a.StartsAt.In(loc)
+				out = append(out, scheduleConflict{
+					When:   fmt.Sprintf("%d %s, %s", d.Day(), ruMonthsGenitive[int(d.Month())-1], d.Format("15:04")),
+					Client: name,
+				})
+				if len(out) >= 20 {
+					break
+				}
+			}
 			c.JSON(http.StatusConflict, gin.H{
 				"error":      "В выбранное время уже есть записи:",
 				"need_force": true,
-				"conflicts":  conflicts,
+				"conflicts":  out,
 			})
 			return
 		}
-	}
-
-	created, err := h.blockedSlotRepo.BulkCreate(c.Request.Context(), items, reason)
-	if err != nil {
 		log.Printf("admin create blocks: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось сохранить расписание"})
 		return
