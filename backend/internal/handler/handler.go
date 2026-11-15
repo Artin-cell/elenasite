@@ -866,7 +866,13 @@ func (h *Handler) AdminCreateAppointment(c *gin.Context) {
 		Notes         string `json:"notes"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "internal server error"})
+		log.Printf("admin create appointment: bad request: %v", err)
+		msg := err.Error()
+		if strings.Contains(msg, "Email") || strings.Contains(msg, "email") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "некорректный email"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "данные заполнены некорректно"})
 		return
 	}
 
