@@ -74,7 +74,10 @@ func main() {
 
 	r := gin.Default()
 
-	if err := r.SetTrustedProxies([]string{"127.0.0.1", "172.18.0.1"}); err != nil {
+	// HIGH #1 FIX: Nginx передаёт реальный IP через X-Real-IP, доверяем только 127.0.0.1.
+	// X-Forwarded-For игнорируется, чтобы предотвратить IP spoofing.
+	r.RemoteIPHeaders = []string{"X-Real-IP"}
+	if err := r.SetTrustedProxies([]string{"127.0.0.1"}); err != nil {
 		log.Fatalf("set trusted proxies: %v", err)
 	}
 
@@ -84,7 +87,8 @@ func main() {
 	}
 	r.Use(func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		if origin != "" {
+		// MEDIUM #4 FIX: Явно блокируем Origin "null" (data:, sandboxed iframe, file://)
+		if origin != "" && origin != "null" {
 			if _, ok := allowedOrigins[origin]; ok {
 				c.Header("Access-Control-Allow-Origin", origin)
 				c.Header("Vary", "Origin")

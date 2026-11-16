@@ -150,16 +150,48 @@ function chMon(dir) {
 
 fetchAvailability(cDate.getFullYear(), cDate.getMonth());
 
-// Загрузить длительности услуг
-(async function loadServiceDurations() {
+// Загрузить услуги из API и заменить список в форме
+(async function loadServices() {
+    const sel = document.getElementById('bService');
+    if (!sel) return;
+    
     try {
         const r = await fetch('/api/v1/services');
+        if (!r.ok) throw new Error('API unavailable');
         const list = await r.json();
-        for (const svc of list) {
+        
+        // Фильтруем: только активные не-демо услуги
+        const active = list.filter(s => s.is_active && !s.is_demo);
+        if (active.length === 0) throw new Error('No active services');
+        
+        // Очищаем select, оставляем только placeholder
+        sel.innerHTML = '<option value="">-- Нажмите, чтобы выбрать --</option>';
+        
+        // Добавляем услуги из API
+        for (const svc of active) {
+            const opt = document.createElement('option');
+            opt.value = svc.id;
+            opt.setAttribute('data-duration', svc.duration_min);
+            
+            // Форматируем цену: 700000 коп → 7 000 ₽
+            const rubles = Math.floor(svc.price_kopeks / 100);
+            const priceStr = rubles.toLocaleString('ru-RU').replace(/,/g, ' ');
+            
+            // Формат: "Название — цена"
+            opt.textContent = `${svc.title} — ${priceStr} ₽`;
+            
+            sel.appendChild(opt);
+            
+            // Заполняем длительности для расчёта слотов
             if (svc.id && svc.duration_min) serviceDurations[svc.id] = svc.duration_min;
         }
+        
+        // Перестроить слоты если дата уже выбрана
         if (selDay) renderTimeSlots(formatDateKey(selDay.y, selDay.m, selDay.d));
-    } catch (e) { /* без длительностей работаем как раньше */ }
+    } catch (e) {
+        // Если API не ответил, оставляем статичный список из HTML (запасной)
+        console.warn('Services API failed, using static list:', e.message);
+    }
 })();
 
 // 3.2: при смене услуги — перестроить часы

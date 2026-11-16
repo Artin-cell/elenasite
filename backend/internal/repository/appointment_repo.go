@@ -426,3 +426,13 @@ func (r *CancellationTokenRepo) InvalidateActiveForAppointment(ctx context.Conte
 	`, appointmentID)
 	return err
 }
+
+// CountPendingByClientID возвращает количество активных pending-записей клиента.
+// MEDIUM #8 FIX: используется для предотвращения занятия всего расписания одним клиентом.
+func (r *AppointmentRepo) CountPendingByClientID(ctx context.Context, clientID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count,
+		`select count(*) from appointments where client_id = $1 and status = 'pending'`,
+		clientID)
+	return count, err
+}

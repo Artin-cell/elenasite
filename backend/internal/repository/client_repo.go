@@ -68,32 +68,30 @@ func (r *ClientRepo) GetByPhone(ctx context.Context, phone string) (*models.Clie
 }
 
 func (r *ClientRepo) FindOrCreate(ctx context.Context, c *models.Client) (*models.Client, error) {
+	// MEDIUM #7 FIX: Если клиент существует, возвращаем его без изменения контактных данных.
+	// Обновление контактов — отдельная операция через админку, не при создании записи.
+	// Это предотвращает IDOR: посторонний, зная чужой email, не может перезаписать его ФИО/телефон.
 	existing, err := r.GetByEmail(ctx, c.Email)
 	if err == nil {
+		// Клиент найден по email, проверяем, не занят ли его телефон другим клиентом
 		if existing.Phone != c.Phone {
 			if byPhone, phoneErr := r.GetByPhone(ctx, c.Phone); phoneErr == nil && byPhone.Email != c.Email {
 				return nil, ErrPhoneTakenByAnotherEmail
 			}
 		}
-		existing.FirstName = c.FirstName
-		existing.LastName = c.LastName
-		existing.Patronym = c.Patronym
-		existing.Phone = c.Phone
-		if updErr := r.updateContactInfo(ctx, existing); updErr != nil {
-			if isUniqueViolation(updErr) {
-				return nil, ErrPhoneTakenByAnotherEmail
-			}
-			return nil, updErr
-		}
+		// Возвращаем существующего клиента БЕЗ обновления его данных
 		return existing, nil
 	}
 
+	// Клиент не найден по email, проверяем телефон перед созданием
 	if byPhone, phoneErr := r.GetByPhone(ctx, c.Phone); phoneErr == nil && byPhone.Email != c.Email {
 		return nil, ErrPhoneTakenByAnotherEmail
 	}
 
+	// Создаём нового клиента, race condition обрабатывается через unique constraint
 	if err := r.Create(ctx, c); err != nil {
 		if isUniqueViolation(err) {
+			// Другой запрос успел создать клиента, повторяем поиск
 			if again, againErr := r.GetByEmail(ctx, c.Email); againErr == nil {
 				return again, nil
 			}
