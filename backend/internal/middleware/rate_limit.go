@@ -15,17 +15,19 @@ type visitor struct {
 }
 
 type RateLimiter struct {
-	mu       sync.Mutex
-	visitors map[string]visitor
-	limit    int
-	window   time.Duration
+	mu         sync.Mutex
+	visitors   map[string]visitor
+	limit      int
+	window     time.Duration
+	maxVisitors int // MEDIUM #6 FIX: ограничение на размер map для защиты от утечки памяти
 }
 
 func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 	r := &RateLimiter{
-		visitors: make(map[string]visitor),
-		limit:    limit,
-		window:   window,
+		visitors:    make(map[string]visitor),
+		limit:       limit,
+		window:      window,
+		maxVisitors: 10000, // MEDIUM #6 FIX: максимум 10к уникальных IP в памяти
 	}
 	go r.cleanupLoop()
 	return r
@@ -63,6 +65,19 @@ func (r *RateLimiter) Middleware() gin.HandlerFunc {
 		r.mu.Lock()
 		v, ok := r.visitors[key]
 		if !ok || now.After(v.reset) {
+			// MEDIUM #6 FIX: если map переполнен, удаляем 10% самых старых записей
+			if len(r.visitors) >= r.maxVisitors {
+				var oldestKeys []string
+				cutoff := now.Add(-r.window * 2)
+				for k, vis := range r.visitors {
+					if vis.reset.Before(cutoff) {
+						oldestKeys = append(oldestKeys, k)
+					}
+				}
+				for _, k := range oldestKeys {
+					delete(r.visitors, k)
+				}
+			}
 			v = visitor{count: 0, reset: now.Add(r.window)}
 		}
 		v.count++

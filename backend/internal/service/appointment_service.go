@@ -195,6 +195,15 @@ func (s *AppointmentService) Book(ctx context.Context, req BookRequest) (*BookRe
 		return nil, err
 	}
 
+	// MEDIUM #8 FIX: Лимит 3 активных pending-записей на клиента для защиты от занятия всего расписания
+	pendingCount, err := s.apptRepo.CountPendingByClientID(ctx, client.ID)
+	if err != nil {
+		return nil, fmt.Errorf("check pending limit: %w", err)
+	}
+	if pendingCount >= 3 {
+		return nil, fmt.Errorf("у вас уже есть %d неоплаченных записей, завершите их оплату или дождитесь освобождения слотов", pendingCount)
+	}
+
 	svc, err := s.serviceRepo.GetByID(ctx, req.ServiceID)
 	if err != nil {
 		return nil, fmt.Errorf("service: %w", err)

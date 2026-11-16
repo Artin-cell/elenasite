@@ -106,6 +106,18 @@ func (h *Handler) YooKassaWebhook(c *gin.Context) {
 			log.Printf("yookassa webhook: payment %s status=succeeded but paid=false, skipping (event=%q)", paymentID, payload.Event)
 			break
 		}
+		// HIGH #2 FIX: Проверяем сумму платежа до ConfirmPayment, чтобы предотвратить
+		// подтверждение дорогой записи платежом на меньшую сумму.
+		appt, getErr := h.apptRepo.GetByID(c.Request.Context(), apptID)
+		if getErr != nil {
+			log.Printf("yookassa webhook: load appointment for amount check: %v", getErr)
+			break
+		}
+		if appt.AmountKopeks > 0 && info.AmountKopeks > 0 && info.AmountKopeks != appt.AmountKopeks {
+			log.Printf("yookassa webhook: amount mismatch: payment %d != appointment %d (payment_id=%s, appt_id=%s), rejecting",
+				info.AmountKopeks, appt.AmountKopeks, paymentID, apptID)
+			break
+		}
 		if err := h.apptSvc.ConfirmPayment(c.Request.Context(), apptID); err != nil {
 			log.Printf("yookassa webhook: confirm payment: %v", err)
 		}
