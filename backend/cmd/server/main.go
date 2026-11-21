@@ -6,6 +6,7 @@ import (
 	"elena-backend/internal/db"
 	"elena-backend/internal/handler"
 	"elena-backend/internal/mailer"
+	"elena-backend/internal/middleware"
 	"elena-backend/internal/repository"
 	"elena-backend/internal/service"
 	"fmt"
@@ -74,10 +75,7 @@ func main() {
 
 	r := gin.Default()
 
-	// HIGH #1 FIX: Nginx передаёт реальный IP через X-Real-IP, доверяем только 127.0.0.1.
-	// X-Forwarded-For игнорируется, чтобы предотвратить IP spoofing.
-	r.RemoteIPHeaders = []string{"X-Real-IP"}
-	if err := r.SetTrustedProxies([]string{"127.0.0.1"}); err != nil {
+	if err := middleware.ConfigureClientIP(r); err != nil {
 		log.Fatalf("set trusted proxies: %v", err)
 	}
 
