@@ -765,3 +765,131 @@ function toCalendarISO(year, month1, day, hh, mm) {
     const p = n => String(n).padStart(2, '0');
     return `${year}-${p(month1)}-${p(day)}T${p(hh)}:${p(mm)}:00+05:00`;
 }
+
+// ========== Динамическая загрузка блока услуг ==========
+async function loadServicesSection() {
+  const container = document.querySelector('.s-services');
+  if (!container) return;
+  try {
+    const res = await fetch('/api/v1/services');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const all = await res.json();
+    if (!Array.isArray(all) || all.length === 0) return;
+    const svcs = all.filter(s => s.is_active && !s.is_demo);
+    if (svcs.length === 0) return;
+
+    container.innerHTML = '';
+    if (svcs.length <= 4) {
+      svcs.forEach(s => container.appendChild(svcCard(s)));
+      return;
+    }
+    svcCarousel(container, svcs);
+  } catch (e) {
+    console.warn('services section:', e.message);
+    // При ошибке хардкодные карточки уже очищены — восстанавливаем ничего не делая,
+    // статичные карточки будут видны до вызова этой функции.
+  }
+}
+
+function svcCard(svc) {
+  const c = document.createElement('div');
+  c.className = 's-card';
+  const price = svc.price_kopeks
+    ? '<div class="s-price">' + (svc.price_kopeks / 100).toLocaleString('ru-RU') + ' \u20bd</div>' : '';
+  const desc = (svc.description || '').trim();
+  const preview = desc ? (desc.length > 200 ? desc.slice(0, 200) + '\u2026' : desc) : '\u041f\u043e\u0434\u0440\u043e\u0431\u043d\u043e\u0441\u0442\u0438 \u0443\u0442\u043e\u0447\u043d\u044f\u0439\u0442\u0435 \u043f\u0440\u0438 \u0437\u0430\u043f\u0438\u0441\u0438';
+  c.innerHTML = price +
+    '<h3 class="s-title">' + svcEsc(svc.title) + '</h3>' +
+    '<div class="s-preview fade"><p>' + svcEsc(preview) + '</p></div>' +
+    '<a href="#s-booking" class="s-book-btn">\u0412\u044b\u0431\u0440\u0430\u0442\u044c</a>';
+  return c;
+}
+
+function svcEsc(t) {
+  const d = document.createElement('div');
+  d.textContent = t || '';
+  return d.innerHTML;
+}
+
+function svcCarousel(container, svcs) {
+  // Обёртка: overflow:hidden для трека, но видна за пределами через padding-parent
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:relative;';
+
+  const track = document.createElement('div');
+  track.style.cssText = 'display:grid;transition:transform 0.4s ease;width:100%;overflow:hidden;';
+
+  svcs.forEach(s => track.appendChild(svcCard(s)));
+  wrap.appendChild(track);
+
+  let idx = 0;
+
+  function perView() {
+    return window.innerWidth >= 1200 ? 4 : window.innerWidth >= 769 ? 2 : 1;
+  }
+  function maxIdx() { return Math.max(0, svcs.length - perView()); }
+
+  function render() {
+    const pv = perView();
+    track.style.gridTemplateColumns = 'repeat(' + svcs.length + ', calc(' + (100 / pv) + '% - ' + ((pv - 1) * 24 / pv) + 'px))';
+    track.style.gap = '24px';
+    const pct = idx * (100 / pv + 24 / track.offsetWidth * 100);
+    // Используем точный пиксельный сдвиг через offsetWidth
+    const cardW = track.offsetWidth / pv;
+    const shift = idx * (cardW + 24);
+    track.style.transform = 'translateX(-' + shift + 'px)';
+    btnL.style.opacity = idx === 0 ? '0.3' : '1';
+    btnR.style.opacity = idx >= maxIdx() ? '0.3' : '1';
+  }
+
+  // Кнопки вынесены ЗА обёртку, в родительский .s-services, через position:absolute в page-section
+  function mkBtn(ch, side) {
+    const b = document.createElement('button');
+    b.textContent = ch;
+    b.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);' +
+      'background:rgba(250,248,244,0.96);border:1.5px solid var(--border-color);border-radius:50%;' +
+      'width:48px;height:48px;font-size:30px;line-height:1;cursor:pointer;z-index:20;' +
+      'box-shadow:0 2px 10px rgba(0,0,0,0.12);transition:background 0.2s;color:var(--text-main);' +
+      side + ':-60px;';
+    b.addEventListener('mouseenter', () => { if (b.style.opacity !== '0.3') b.style.background = '#fff'; });
+    b.addEventListener('mouseleave', () => { b.style.background = 'rgba(250,248,244,0.96)'; });
+    return b;
+  }
+
+  const btnL = mkBtn('\u2039', 'left');
+  const btnR = mkBtn('\u203a', 'right');
+
+  btnL.addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
+  btnR.addEventListener('click', () => { if (idx < maxIdx()) { idx++; render(); } });
+
+  // Позиционируем контейнер-обёртку и показываем кнопки
+  container.style.position = 'relative';
+  container.appendChild(wrap);
+
+  // Добавляем кнопки в .s-services (не в track/wrap, они выходят за overflow)
+  container.appendChild(btnL);
+  container.appendChild(btnR);
+
+  // На мобилке кнопки скрыты
+  function toggleBtns() {
+    const show = window.innerWidth >= 1200 ? 'block' : 'none';
+    btnL.style.display = show;
+    btnR.style.display = show;
+  }
+  toggleBtns();
+
+  window.addEventListener('resize', () => {
+    toggleBtns();
+    if (idx > maxIdx()) { idx = maxIdx(); }
+    render();
+  });
+
+  // Первая отрисовка после layout
+  requestAnimationFrame(render);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadServicesSection);
+} else {
+  loadServicesSection();
+}

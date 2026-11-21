@@ -1191,6 +1191,8 @@
       gap: 24px;
       margin: 40px 0;
       font-family: sans-serif;
+      position: relative;
+      overflow: visible;
     }
 
     @media (min-width: 769px) {
